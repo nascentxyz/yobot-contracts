@@ -1,7 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
-
-/* solhint-disable max-line-length */
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity 0.8.11;
 
 import {Coordinator} from "./Coordinator.sol";
 import {IArtBlocksFactory} from "./external/IArtBlocksFactory.sol";

@@ -1,9 +1,7 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity 0.8.11;
 
-/* solhint-disable var-name-mixedcase */
-
-import {SafeMath} from "zeppelin-solidity/utils/math/SafeMath.sol";
+import {SafeMath} from "openzeppelin-contracts/utils/math/SafeMath.sol";
 
 /// @title Randomizer
 contract Randomizer {

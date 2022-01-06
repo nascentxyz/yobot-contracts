@@ -1,11 +1,9 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity 0.8.11;
 
-/* solhint-disable max-line-length */
-
-import {ERC165} from "zeppelin-solidity/utils/introspection/ERC165.sol";
-import {ERC721} from "zeppelin-solidity/token/ERC721/ERC721.sol";
-import {ERC721Enumerable} from "zeppelin-solidity/token/ERC721/extensions/ERC721Enumerable.sol";
+import {ERC165} from "openzeppelin-contracts/utils/introspection/ERC165.sol";
+import {ERC721} from "openzeppelin-contracts/token/ERC721/ERC721.sol";
+import {ERC721Enumerable} from "openzeppelin-contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 /**
  * ERC721 base contract without the concept of tokenUri as this is managed by the parent

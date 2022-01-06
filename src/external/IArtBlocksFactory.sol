@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity 0.8.11;
 
 interface IArtBlocksFactory {
     function tokenIdToProjectId(uint256 _tokenId) external view returns (uint256 projectId);

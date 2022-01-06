@@ -1,11 +1,7 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity 0.8.11;
 
-/* solhint-disable max-states-count */
-/* solhint-disable max-line-length */
 
-import {Strings} from "zeppelin-solidity/utils/Strings.sol";
-import {SafeMath} from "zeppelin-solidity/utils/math/SafeMath.sol";
 
 import {CustomERC721Metadata} from "./external/artblocks/CustomERC721Metadata.sol";
 
@@ -14,9 +10,6 @@ interface Randomizer {
 }
 
 contract GenArt721Core is CustomERC721Metadata {
-    // ** Not needed for overflow/underflow as of Solidity 0.8.x: https://blog.soliditylang.org/2020/12/16/solidity-v0.8.0-release-announcement/ **
-    // ** This introduces checked arithmetic, reverts on over and underflows, and unchecked blocks, among others **
-    using SafeMath for uint256;
 
     event Mint(address indexed _to, uint256 indexed _tokenId, uint256 indexed _projectId);
 
