@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.11;
 
-
-
 import {CustomERC721Metadata} from "./external/artblocks/CustomERC721Metadata.sol";
 
 interface Randomizer {
