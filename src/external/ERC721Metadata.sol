@@ -1,54 +1,44 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.11;
 
-import {ERC165} from "openzeppelin-contracts/utils/introspection/ERC165.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 
+import {ERC165} from "./ERC165.sol";
 import {ERC721Enumerable} from "./ERC721Enumerable.sol";
 
-/**
- * ERC721 base contract without the concept of tokenUri as this is managed by the parent
- */
-contract CustomERC721Metadata is ERC165, ERC721, ERC721Enumerable {
-    // Token name
-    string private _name;
+/// @title ERC721 Metadata
+/// @notice An Enumerable ERC721 with Metadata
+/// @author Andreas Bigger <andreas@nascent.xyz>
+contract ERC721Metadata is ERC165, ERC721, ERC721Enumerable {
+ 
+    /// @dev The ERC721 Name
+    string public _name;
 
-    // Token symbol
-    string private _symbol;
+    /// @dev The ERC721 Symbol
+    string public _symbol;
 
+    /// @dev The interface id of the contract
     bytes4 private constant _INTERFACE_ID_ERC721_METADATA = 0x5b5e139f;
 
-    /**
-     * @dev Constructor function
-     */
+
+    /// @dev Initializes name, symbol, and registers the supported interfaces
     constructor(string memory argName, string memory argSymbol) ERC721(argName, argSymbol) {
         _name = argName;
         _symbol = argSymbol;
-
-        // register the supported interfaces to conform to ERC721 via ERC165
-        // ?? Changed `_registerInterface` to `supportsInterface` ??
         supportsInterface(_INTERFACE_ID_ERC721_METADATA);
     }
 
-    /**
-     * @dev Gets the token name
-     * @return string representing the token name
-     */
+    /// @dev Returns the token name
     function name() public view virtual override returns (string memory) {
         return _name;
     }
 
-    /**
-     * @dev Gets the token symbol
-     * @return string representing the token symbol
-     */
+    /// @dev Returns the token symbok
     function symbol() public view virtual override returns (string memory) {
         return _symbol;
     }
 
-    /**
-     * @notice use ERC721Enumerable definition
-     */
+    /// @dev Hook called before token transfers (including minting and burning)
     function _beforeTokenTransfer(
         address from,
         address to,
@@ -57,9 +47,8 @@ contract CustomERC721Metadata is ERC165, ERC721, ERC721Enumerable {
         ERC721Enumerable._beforeTokenTransfer(from, to, tokenId);
     }
 
-    /**
-     * @notice use ERC721Enumerable definition
-     */
+    /// @dev Returns if the contract implements the defined interface
+    /// @param interfaceId the 4 byte interface signature
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, ERC721, ERC721Enumerable) returns (bool) {
         return ERC721Enumerable.supportsInterface(interfaceId);
     }

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.11;
 
-import "../IERC721.sol";
+import "./IERC721.sol";
 
 /// @title ERC-721 Enumerable Interface
+/// @author Andreas Bigger <andreas@nascent.xyz>
 interface IERC721Enumerable {
     /// @dev Returns the total amount of tokens stored by the contract.
     function totalSupply() external view returns (uint256);

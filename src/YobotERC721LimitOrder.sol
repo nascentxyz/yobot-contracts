@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.11;
 
-import {IERC721} from "./external/IERC721.sol";
+import {IERC721} from "./interfaces/IERC721.sol";
 import {Coordinator} from "./Coordinator.sol";
 
 /// @title YobotERC721LimitOrder

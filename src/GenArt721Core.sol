@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.11;
 
-import {CustomERC721Metadata} from "./external/artblocks/CustomERC721Metadata.sol";
+import {ERC721Metadata} from "./external/ERC721Metadata.sol";
 
 interface Randomizer {
     function returnValue() external view returns (bytes32);
 }
 
-contract GenArt721Core is CustomERC721Metadata {
+contract GenArt721Core is ERC721Metadata {
 
     event Mint(address indexed _to, uint256 indexed _tokenId, uint256 indexed _projectId);
 
@@ -99,7 +99,7 @@ contract GenArt721Core is CustomERC721Metadata {
         string memory _tokenName,
         string memory _tokenSymbol,
         address _randomizerContract
-    ) CustomERC721Metadata(_tokenName, _tokenSymbol) {
+    ) ERC721Metadata(_tokenName, _tokenSymbol) {
         admin = msg.sender;
         isWhitelisted[msg.sender] = true;
         artblocksAddress = msg.sender;
