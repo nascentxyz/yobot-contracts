@@ -22,14 +22,14 @@ abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
 
     /// @dev Returns if the contract implements the defined interface
     /// @param interfaceId the 4 byte interface signature
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure virtual override(ERC721) returns (bool) {
         return interfaceId == type(IERC721Enumerable).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /// @dev Returns a token ID owned by `owner` at a given `index` of its token list.
     /// @dev Use along with {balanceOf} to enumerate all of ``owner``'s tokens.
     function tokenOfOwnerByIndex(address owner, uint256 index) public view virtual override returns (uint256) {
-        require(index < ERC721.balanceOf(owner), "ERC721Enumerable: owner index out of bounds");
+        require(index < balanceOf[owner], "ERC721Enumerable: owner index out of bounds");
         return _ownedTokens[owner][index];
     }
 
@@ -46,8 +46,8 @@ abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
     }
 
     /// @dev Hook called before token transfers (including minting and burning)
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal virtual override {
-        super._beforeTokenTransfer(from, to, tokenId);
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal virtual {
+        // super._beforeTokenTransfer(from, to, tokenId);
 
         if (from == address(0)) {
             _addTokenToAllTokensEnumeration(tokenId);
@@ -65,7 +65,7 @@ abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
     /// @param to address of the new token owner
     /// @param tokenId uint256 token id
     function _addTokenToOwnerEnumeration(address to, uint256 tokenId) private {
-        uint256 length = ERC721.balanceOf(to);
+        uint256 length = balanceOf[to];
         _ownedTokens[to][length] = tokenId;
         _ownedTokensIndex[tokenId] = length;
     }
@@ -81,7 +81,7 @@ abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
     /// @param from address of the previous owner
     /// @param tokenId uint256 token id to be removed
     function _removeTokenFromOwnerEnumeration(address from, uint256 tokenId) private {
-        uint256 lastTokenIndex = ERC721.balanceOf(from) - 1;
+        uint256 lastTokenIndex = balanceOf[from] - 1;
         uint256 tokenIndex = _ownedTokensIndex[tokenId];
 
         uint256 lastTokenId = _ownedTokens[from][lastTokenIndex];

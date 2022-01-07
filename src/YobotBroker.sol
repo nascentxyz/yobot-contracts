@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import {Coordinator} from "./Coordinator.sol";
-import {IArtBlocksFactory} from "./external/IArtBlocksFactory.sol";
+import {IArtBlocksFactory} from "./interfaces/IArtBlocksFactory.sol";
 
 /// @title YobotBroker
 /// @author Andreas Bigger <andreas@nascent.xyz> et al

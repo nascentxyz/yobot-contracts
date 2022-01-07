@@ -26,13 +26,13 @@ contract Coordinator {
     }
 
     /// @notice Constructor sets coordinator, profit receiver, and fee in bips
-    /// @param profitReceiver the address of the profit receiver
-    /// @param botFeeBips the fee in bips
-    constructor(address profitReceiver, uint256 botFeeBips) {
-        if (botFeeBips > 10_000) revert FeeOverflow(msg.sender, botFeeBips);
+    /// @param _profitReceiver the address of the profit receiver
+    /// @param _botFeeBips the fee in bips
+    constructor(address _profitReceiver, uint256 _botFeeBips) {
+        if (botFeeBips > 10_000) revert FeeOverflow(msg.sender, _botFeeBips);
         coordinator = msg.sender;
-        profitReceiver = payable(profitReceiver);
-        botFeeBips = botFeeBips;
+        profitReceiver = payable(_profitReceiver);
+        botFeeBips = _botFeeBips;
     }
 
     /*///////////////////////////////////////////////////////////////

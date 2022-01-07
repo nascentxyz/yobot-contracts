@@ -66,7 +66,8 @@ contract GenArt721Core is ERC721Metadata {
     uint256 public nextProjectId = 3;
 
     modifier onlyValidTokenId(uint256 _tokenId) {
-        require(_exists(_tokenId), "Token ID does not exist");
+        // require(_exists(_tokenId), "Token ID does not exist");
+        require(_tokenId <= totalSupply(), "Token ID does not exist");
         _;
     }
 
@@ -112,7 +113,7 @@ contract GenArt721Core is ERC721Metadata {
         address _by
     ) external returns (uint256 _tokenId) {
         require(isMintWhitelisted[msg.sender], "Must mint from whitelisted minter contract.");
-        require(projects[_projectId].invocations.add(1) <= projects[_projectId].maxInvocations, "Must not exceed max invocations");
+        require(projects[_projectId].invocations + 1 <= projects[_projectId].maxInvocations, "Must not exceed max invocations");
         require(projects[_projectId].active || _by == projectIdToArtistAddress[_projectId], "Project must exist and be active");
         require(!projects[_projectId].paused || _by == projectIdToArtistAddress[_projectId], "Purchases are paused.");
 
@@ -124,7 +125,7 @@ contract GenArt721Core is ERC721Metadata {
     function _mintToken(address _to, uint256 _projectId) internal returns (uint256 _tokenId) {
         uint256 tokenIdToBe = (_projectId * ONE_MILLION) + projects[_projectId].invocations;
 
-        projects[_projectId].invocations = projects[_projectId].invocations.add(1);
+        projects[_projectId].invocations = projects[_projectId].invocations + 1;
 
         bytes32 hash = keccak256(abi.encodePacked(projects[_projectId].invocations, block.number, blockhash(block.number - 1), msg.sender, randomizerContract.returnValue()));
         tokenIdToHash[tokenIdToBe] = hash;
@@ -208,7 +209,7 @@ contract GenArt721Core is ERC721Metadata {
         } else {
             projects[projectId].useHashString = true;
         }
-        nextProjectId = nextProjectId.add(1);
+        nextProjectId = nextProjectId + 1;
     }
 
     function updateProjectCurrencyInfo(
@@ -273,7 +274,7 @@ contract GenArt721Core is ERC721Metadata {
 
     function addProjectScript(uint256 _projectId, string memory _script) public onlyUnlocked(_projectId) onlyArtistOrWhitelisted(_projectId) {
         projects[_projectId].scripts[projects[_projectId].scriptCount] = _script;
-        projects[_projectId].scriptCount = projects[_projectId].scriptCount.add(1);
+        projects[_projectId].scriptCount = projects[_projectId].scriptCount + 1;
     }
 
     function updateProjectScript(
@@ -288,7 +289,7 @@ contract GenArt721Core is ERC721Metadata {
     function removeProjectLastScript(uint256 _projectId) public onlyUnlocked(_projectId) onlyArtistOrWhitelisted(_projectId) {
         require(projects[_projectId].scriptCount > 0, "there are no scripts to remove");
         delete projects[_projectId].scripts[projects[_projectId].scriptCount - 1];
-        projects[_projectId].scriptCount = projects[_projectId].scriptCount.sub(1);
+        projects[_projectId].scriptCount = projects[_projectId].scriptCount - 1;
     }
 
     function updateProjectScriptJSON(uint256 _projectId, string memory _projectScriptJSON) public onlyUnlocked(_projectId) onlyArtistOrWhitelisted(_projectId) {
