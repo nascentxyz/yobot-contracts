@@ -7,11 +7,29 @@
 
 ```ml
 src
-├─ Coordinator - ""
+├─ external
+|  ├─ ERC165 — "A minimal ERC165 Implementation"
+|  ├─ ERC721Enumerable — "An extension of ERC721 that supports enumeration"
+|  └─ ERC721Metadata — "An Enumerable ERC721 with Metadata"
+├─ interfaces
+|  ├─ IArtBlocksFactory — "ArtBlocksFactory Contract Interface"
+|  ├─ IERC165 — "ERC165 Interface"
+|  ├─ IERC721 — "ERC721 Interface"
+|  └─ IERC721Enumerable — "An Enumerable ERC721 Interface"
 ├─ tests
-|  ├─ Coordinator — ""
-|  ├─ YobotArtBlocksBroker — ""
-|  └─ YobotERC721LimitOrder - ""
+|  ├─ utils
+|  |  └─ DSTestPlus — "Custom, extended DSTest Suite"
+|  ├─ Coordinator.t — "Coordinator Tests"
+|  ├─ YobotArtBlocksBroker.t — "YobotArtBlocksBroker Tests"
+|  └─ YobotERC721LimitOrder.t — "YobotERC721LimitOrder Tests"
+├─ Coordinator — "Coordinator for Fee Parameters and Reception"
+├─ GenArt721Core — "..."
+├─ InfiniteMint — "An ERC721 allowing infinite mints for testnet"
+├─ Randomizer — "A random generation"
+├─ YobotArtBlocksBroker — "Permissionless Broker for ArtBlocks Minting using Flashbot Searchers"
+├─ YobotBroker — "Abstracted Broker Functionality for Yobot"
+├─ YobotDeadline — "Abstracted Deadline Logic"
+└─ YobotERC721LimitOrder — "Permissionless Broker for Generalized ERC721 Minting using Flashbot Searchers"
 ```
 
 ## Development

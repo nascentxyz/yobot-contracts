@@ -5,9 +5,8 @@ import {Coordinator} from "./Coordinator.sol";
 import {IArtBlocksFactory} from "./external/IArtBlocksFactory.sol";
 
 /// @title YobotArtBlocksBroker
-/// @author Andreas Bigger <andreas@nascent.xyz> et al
-/// @notice Broker enabling permissionless markets between flashbot
-/// 				searchers and users attempting to mint ArtBlocks drops.
+/// @author Andreas Bigger <andreas@nascent.xyz>
+/// @notice Permissionless broker for ArtBlocks minting using Flashbot Searchers
 contract YobotArtBlocksBroker is Coordinator {
     IArtBlocksFactory public constant ARTBLOCKS_FACTORY = IArtBlocksFactory(0xa7d8d9ef8D8Ce8992Df33D8b8CF4Aebabd5bD270);
 
