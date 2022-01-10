@@ -2,46 +2,26 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 make: *** No rule to make target 'all'.  Stop.
  
 # GNU Make 4.2.1
- 
 # Built for x86_64-pc-linux-gnu
- 
 # Copyright (C) 1988-2016 Free Software Foundation, Inc.
- 
 # License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
- 
 # This is free software: you are free to change and redistribute it.
- 
 # There is NO WARRANTY, to the extent permitted by law.
- 
 
- 
-# Make data base, printed on Thu Jan  6 17:07:28 2022
- 
+# Make data base, printed on Mon Jan 10 09:00:29 2022
 
 # Variables
- 
 
- 
 # 'override' directive
- 
 GNUMAKEFLAGS := 
- 
 # automatic
- 
 <D = $(patsubst %/,%,$(dir $<))
- 
 # automatic
- 
 ?F = $(notdir $?)
- 
 # environment
- 
 DESKTOP_SESSION = ubuntu
- 
 # default
- 
 .SHELLFLAGS := -c
- 
 # environment
 XDG_SESSION_CLASS = user
 # environment
@@ -229,7 +209,7 @@ SHLVL = 1
 # environment
 GNOME_SHELL_SESSION_MODE = ubuntu
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-2f9f77e1-b6f7-4f2d-9173-93f31ec243f4.sock
+VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-afc29e45-f415-4dac-a0f2-e8e17baa12be.sock
 # default
 MAKE_VERSION := 4.2.1
 # environment
@@ -330,9 +310,9 @@ VSCODE_PID = 64602
 
 # Directories
 
-# . (device 2053, inode 52563258): 11 files, no impossibilities.
+# . (device 2053, inode 52563258): 22 files, no impossibilities.
 
-# 11 files, no impossibilities in 1 directories.
+# 22 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -382,12 +362,12 @@ GNUmakefile:
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 19 / storage = 165 B / avg = 8 B
-# current buf: size = 8162 B / used = 165 B / count = 19 / avg = 8 B
+# strcache buffers: 1 (0) / strings = 30 / storage = 280 B / avg = 9 B
+# current buf: size = 8162 B / used = 280 B / count = 30 / avg = 9 B
 
-# strcache performance: lookups = 22 / hit rate = 13%
+# strcache performance: lookups = 33 / hit rate = 9%
 # hash-table stats:
-# Load=19/8192=0%, Rehash=0, Collisions=1/22=5%
-# Finished Make data base on Thu Jan  6 17:07:28 2022
+# Load=30/8192=0%, Rehash=0, Collisions=1/33=3%
+# Finished Make data base on Mon Jan 10 09:00:29 2022
 
  

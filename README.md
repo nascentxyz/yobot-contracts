@@ -61,52 +61,38 @@ yarn test
 
 ### Deploying
 
-First, if `seth` is not configured, we should run an `ethsign import --keystore <desired_keystore_file_location>`.
-Then follow the steps to import your wallet private key and set a signing passphrase.
 
 Then, we must source our environment variables to deploy to the Goerli network:
 
-```
-ETH_FROM=xxxx
-ETH_RPC_URL=xxxx
-ETH_GAS=xxxx
-```
-
-The ArtBlocks Factory is deployed on mainnet at [0xa7d8d9ef8D8Ce8992Df33D8b8CF4Aebabd5bD270](https://etherscan.io/address/0xa7d8d9ef8D8Ce8992Df33D8b8CF4Aebabd5bD270#code), but we need to have it deployed on goerli.
-
-To deploy `GenArt721Core` as was deployed to `` on [Goerli](), run the following command in the [base directory](./):
-
-```
-dapp create GenArt721Core --verify
+```bash
+export ETH_FROM=xxxx
+export ETH_RPC_URL=xxxx
+export ETH_GAS=xxxx
+export ETHERSCAN_API_KEY=xxxx
 ```
 
-**YobotERC721LimitOrder** deployed and verified on goerli at [0x0d29790c2412f42248905f879260f1a6f409a11a](https://goerli.etherscan.io/address/0x0d29790c2412f42248905f879260f1a6f409a11a#code)
-
-Command used to deploy:
-
-```
-ETH_GAS=15000000 dapp create src/YobotERC721LimitOrder.sol:YobotERC721LimitOrder --verify 0xf25e32C0f2928F198912A4F21008aF146Af8A05a 5
+InfiniteMint deployed with:
+```bash
+forge create --rpc-url https://eth-goerli.alchemyapi.io/v2/<your_api_key> --chain 'goerli' --interactive InfiniteMint --constructor-args 'TEST' 'TEST'
 ```
 
-Command used to verify:
+InfiniteMint deployed on Goerli at [0xc47eff74c2e949fee8a249586e083f573a7e56fa](https://goerli.etherscan.io/address/0xc47eff74c2e949fee8a249586e083f573a7e56fa).
 
-```
-ETH_GAS=15000000 dapp verify-contract src/YobotERC721LimitOrder.sol:YobotERC721LimitOrder 0x0d29790c2412f42248905f879260f1a6f409a11a 0xf25e32C0f2928F198912A4F21008aF146Af8A05a 5
-```
+The `--interactive` flag allows you to enter your deployer wallet private key in the terminal without exposing it in plain text.
 
-**YobotArtBlocksBroker** Deployed and verified on goerli at: [0x041761ca2d7730ae3788f732c1a43db002feff2f](https://goerli.etherscan.io/address/0x041761ca2d7730ae3788f732c1a43db002feff2f#code)
-
-Command used to deploy:
-
-```
-ETH_GAS=15000000 dapp create src/YobotArtBlocksBroker.sol:YobotArtBlocksBroker 0xf25e32C0f2928F198912A4F21008aF146Af8A05a 5
+Verification requires the following environment variables to be set:
+```bash
+export ETH_RPC_URL=xxxx
+export ETHERSCAN_API_KEY=xxxx
 ```
 
-Command to verify:
+// TODO: wait for file flattening https://github.com/gakonst/ethers-rs/pull/774
 
+Verify InfiniteMint contract with:
+```bash
+forge verify-contract src/InfiniteMint.sol:InfiniteMint 0xc47eff74c2e949fee8a249586e083f573a7e56fa 'TEST' 'TEST'
 ```
-ETH_GAS=15000000 dapp verify-contract src/YobotArtBlocksBroker.sol:YobotArtBlocksBroker 0x041761ca2d7730ae3788f732c1a43db002feff2f 0xf25e32C0f2928F198912A4F21008aF146Af8A05a 5
-```
+
 
 ## License
 
