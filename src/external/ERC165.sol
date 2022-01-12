@@ -9,7 +9,13 @@ import "../interfaces/IERC165.sol";
 abstract contract ERC165 is IERC165 {
     /// @dev Returns if the contract implements the defined interface
     /// @param interfaceId the 4 byte interface signature
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
         return type(IERC165).interfaceId == interfaceId;
     }
 }

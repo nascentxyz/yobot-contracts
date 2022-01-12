@@ -22,14 +22,31 @@ abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
 
     /// @dev Returns if the contract implements the defined interface
     /// @param interfaceId the 4 byte interface signature
-    function supportsInterface(bytes4 interfaceId) public pure virtual override(ERC721) returns (bool) {
-        return interfaceId == type(IERC721Enumerable).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId)
+        public
+        pure
+        virtual
+        override(ERC721)
+        returns (bool)
+    {
+        return
+            interfaceId == type(IERC721Enumerable).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     /// @dev Returns a token ID owned by `owner` at a given `index` of its token list.
     /// @dev Use along with {balanceOf} to enumerate all of ``owner``'s tokens.
-    function tokenOfOwnerByIndex(address owner, uint256 index) public view virtual override returns (uint256) {
-        require(index < balanceOf[owner], "ERC721Enumerable: owner index out of bounds");
+    function tokenOfOwnerByIndex(address owner, uint256 index)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        require(
+            index < balanceOf[owner],
+            "ERC721Enumerable: owner index out of bounds"
+        );
         return _ownedTokens[owner][index];
     }
 
@@ -40,13 +57,26 @@ abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
 
     /// @dev Returns a token ID at a given `index` of all the tokens stored by the contract.
     /// @dev Use along with {totalSupply} to enumerate all tokens.
-    function tokenByIndex(uint256 index) public view virtual override returns (uint256) {
-        require(index < ERC721Enumerable.totalSupply(), "ERC721Enumerable: global index out of bounds");
+    function tokenByIndex(uint256 index)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        require(
+            index < ERC721Enumerable.totalSupply(),
+            "ERC721Enumerable: global index out of bounds"
+        );
         return _allTokens[index];
     }
 
     /// @dev Hook called before token transfers (including minting and burning)
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal virtual {
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal virtual {
         // super._beforeTokenTransfer(from, to, tokenId);
 
         if (from == address(0)) {
@@ -80,15 +110,17 @@ abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
     /// @dev Removes a token from internal owner stores
     /// @param from address of the previous owner
     /// @param tokenId uint256 token id to be removed
-    function _removeTokenFromOwnerEnumeration(address from, uint256 tokenId) private {
+    function _removeTokenFromOwnerEnumeration(address from, uint256 tokenId)
+        private
+    {
         uint256 lastTokenIndex = balanceOf[from] - 1;
         uint256 tokenIndex = _ownedTokensIndex[tokenId];
 
         uint256 lastTokenId = _ownedTokens[from][lastTokenIndex];
-        
+
         // Move the last token to the slot of the to-delete token
         _ownedTokens[from][tokenIndex] = lastTokenId;
-        
+
         // Update the moved token's index
         _ownedTokensIndex[lastTokenId] = tokenIndex;
 

@@ -18,6 +18,7 @@
   "scripts": {
     "setup": "forge init",
     "test": "forge test",
+    "sync": "forge update",
     "lint": "prettier --write src/**/*.sol"
   }
 }

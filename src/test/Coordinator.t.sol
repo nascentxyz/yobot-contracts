@@ -39,7 +39,10 @@ contract CoordinatorTest is DSTestPlus {
     /// @dev Ensures the onlyCoordinator modifier is working for changeCoordinator
     /// @param honestCoordinator the honest coordinator of a Coordinator contract
     /// @param newCoordinator a new coordinator attempted to be set by address(this)
-    function testFailChangeCoordinator(address honestCoordinator, address newCoordinator) public {
+    function testFailChangeCoordinator(
+        address honestCoordinator,
+        address newCoordinator
+    ) public {
         // if this is the honestCoordinator, changing the coordinator to the `newCoordinator` won't fail
         assert(address(this) != honestCoordinator);
 
@@ -67,7 +70,10 @@ contract CoordinatorTest is DSTestPlus {
     /// @dev Ensures the onlyCoordinator modifier is working for changeProfitReceiver
     /// @param honestCoordinator the honest coordinator of a Coordinator contract
     /// @param newProfitReceiver a new profit receiver attempted to be set by address(this)
-    function testFailChangeProfitReceiver(address honestCoordinator, address newProfitReceiver) public {
+    function testFailChangeProfitReceiver(
+        address honestCoordinator,
+        address newProfitReceiver
+    ) public {
         // if this is the honestCoordinator, changing the coordinator to the `newProfitReceiver` won't fail
         assert(address(this) != honestCoordinator);
 
@@ -108,7 +114,9 @@ contract CoordinatorTest is DSTestPlus {
     /// @param honestCoordinator the honest coordinator of a Coordinator contract
     /// @param newFee the new botFeeBips attempted
     ///               to be set with changeBotFeeBips and address(this)
-    function testFailchangeBotFeeBips(address honestCoordinator, uint256 newFee) public {
+    function testFailchangeBotFeeBips(address honestCoordinator, uint256 newFee)
+        public
+    {
         // if this is the honestCoordinator, changing the coordinator to the `newFee` won't fail
         assert(address(this) != honestCoordinator);
 

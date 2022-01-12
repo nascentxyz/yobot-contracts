@@ -25,7 +25,9 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
     /// @notice Test can't place order when Artblocks Project Id is 0
     /// @param _value value to send - _value = price per nft * _quantity
     /// @param _quantity the number of erc721 tokens
-    function testFailPlaceZeroProjectIdOrder(uint256 _value, uint128 _quantity) public {
+    function testFailPlaceZeroProjectIdOrder(uint256 _value, uint128 _quantity)
+        public
+    {
         // this should fail
         yabb.placeOrder{value: _value}(0, _quantity);
     }
