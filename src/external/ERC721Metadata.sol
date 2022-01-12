@@ -10,7 +10,6 @@ import {ERC721Enumerable} from "./ERC721Enumerable.sol";
 /// @notice An Enumerable ERC721 with Metadata
 /// @author Andreas Bigger <andreas@nascent.xyz>
 abstract contract ERC721Metadata is ERC165, ERC721, ERC721Enumerable {
- 
 
     /// @dev The interface id of the contract
     bytes4 private constant _INTERFACE_ID_ERC721_METADATA = 0x5b5e139f;
