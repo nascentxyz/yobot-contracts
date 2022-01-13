@@ -86,10 +86,8 @@ contract StrictMint is ERC721 {
 
     /// @dev Sets the ERC721 Metadata and OpenSea Proxy Registry Address
     constructor(
-        string memory _name,
-        string memory _symbol,
         address osProxyRegistryAddress
-    ) ERC721(_name, _symbol) {
+    ) ERC721("Strict Mint", "STRICT") {
         openSeaProxyRegistryAddress = osProxyRegistryAddress;
         owner = msg.sender;
     }
@@ -99,14 +97,14 @@ contract StrictMint is ERC721 {
     //////////////////////////////////////////////////
 
     /// @dev Returns the URI for the given token
-    function tokenURI(uint256)
+    function tokenURI(uint256 tokenId)
         public
-        pure
+        view
         virtual
         override
         returns (string memory)
     {
-        return baseURI;
+        return string(abi.encodePacked(baseURI, "/", tokenId, ".json"));
     }
 
     //////////////////////////////////////////////////
@@ -191,5 +189,51 @@ contract StrictMint is ERC721 {
     function withdrawTokens(IERC20 token) public onlyOwner {
         uint256 balance = token.balanceOf(address(this));
         token.transfer(msg.sender, balance);
+    }
+
+    //////////////////////////////////////////////////
+    //                 CUSTOM LOGIC                 //
+    //////////////////////////////////////////////////
+
+    // TODO: Override this so we can allow opensea proxy accounts for gassless listings
+    // function isApprovedForAll(address owner, address operator)
+    //     public
+    //     view
+    //     override
+    //     returns (bool)
+    // {
+    //     // Get a reference to OpenSea's proxy registry contract by instantiating
+    //     // the contract using the already existing address.
+    //     ProxyRegistry proxyRegistry = ProxyRegistry(
+    //         openSeaProxyRegistryAddress
+    //     );
+    //     if (
+    //         isOpenSeaProxyActive &&
+    //         address(proxyRegistry.proxies(owner)) == operator
+    //     ) {
+    //         return true;
+    //     }
+
+    //     return super.isApprovedForAll(owner, operator);
+    // }
+
+
+    // @dev Support for EIP 2981 Interface by overriding erc165 supportsInterface
+    function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
+        return
+            interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
+            interfaceId == 0x80ac58cd || // ERC165 Interface ID for ERC721
+            interfaceId == 0x5b5e139f || // ERC165 Interface ID for ERC721Metadata
+            interfaceId == 0x2a55205a;  // ERC165 Interface ID for ERC2981
+    }
+
+    /// @dev Royalter information
+    function royaltyInfo(uint256 tokenId, uint256 salePrice)
+        external
+        view
+        returns (address receiver, uint256 royaltyAmount)
+    {
+        receiver = address(this);
+        royaltyAmount = (salePrice * 5) / 100;
     }
 }

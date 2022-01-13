@@ -92,7 +92,13 @@ Verify InfiniteMint contract with:
 ```bash
 forge verify-contract src/InfiniteMint.sol:InfiniteMint 0xc47eff74c2e949fee8a249586e083f573a7e56fa 'TEST' 'TEST'
 ```
+  
+StrictMint deployed with:
+```bash
+forge create --rpc-url https://eth-goerli.alchemyapi.io/v2/<your_api_key> --chain 'goerli' --interactive StrictMint --constructor-args <os_registry_address>
+```
 
+StrictMint deployed to Goerli at [0x908b07973b4cedb0cad205a9766496e602b7a974](https://goerli.etherscan.io/address/0x908b07973b4cedb0cad205a9766496e602b7a974)
 
 ## License
 
