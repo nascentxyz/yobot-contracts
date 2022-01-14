@@ -46,7 +46,7 @@ contract YobotERC721LimitOrder is Coordinator {
     constructor(address _profitReceiver, uint32 _botFeeBips) Coordinator(_profitReceiver, _botFeeBips) {}
 
     ////////////////////////////////////////////////////
-    ///                 USER FUNCTIONS               ///
+    ///                     ORDERS                   ///
     ////////////////////////////////////////////////////
 
     /// @notice places an open order for a user

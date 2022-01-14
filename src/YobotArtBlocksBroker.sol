@@ -32,15 +32,15 @@ contract YobotArtBlocksBroker is Coordinator {
     /// @param _optionalTokenId An optional specific token id
     event Action(address indexed _user, uint256 indexed _artBlocksProjectId, uint256 _priceInWeiEach, uint256 _quantity, string _action, uint256 _optionalTokenId);
 
-    /// @notice Creates a new yobot erc721 limit order broker
+    /// @notice Creates a new yobot art blocks broker
     /// @param _profitReceiver The profit receiver for fees
     /// @param _botFeeBips The fee rake
     // solhint-disable-next-line no-empty-blocks
     constructor(address _profitReceiver, uint32 _botFeeBips) Coordinator(_profitReceiver, _botFeeBips) {}
 
-    /*///////////////////////////////////////////////////////////////
-                        USER FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                     ORDERS                   ///
+    ////////////////////////////////////////////////////
 
     /// @notice places an open order for a user
     /// @param _artBlocksProjectId the ArtBlocks Project Id
@@ -84,9 +84,9 @@ contract YobotArtBlocksBroker is Coordinator {
         emit Action(msg.sender, _artBlocksProjectId, 0, 0, "ORDER_CANCELLED", 0);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                        BOT FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                  BOT LOGIC                   ///
+    ////////////////////////////////////////////////////
 
     /// @notice fill a single order
     /// @param _user the address of the user with the order
@@ -197,9 +197,9 @@ contract YobotArtBlocksBroker is Coordinator {
         return output;
     }
 
-    /*///////////////////////////////////////////////////////////////
-                        WITHDRAW FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                 WITHDRAWALS                  ///
+    ////////////////////////////////////////////////////
 
     /// @notice Allows profitReceiver and bots to withdraw their fees
     /// @dev delete balances on withdrawal to free up storage
@@ -211,9 +211,9 @@ contract YobotArtBlocksBroker is Coordinator {
         sendValue(payable(msg.sender), amount);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                      HELPER FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                   HELPERS                    ///
+    ////////////////////////////////////////////////////
 
     /// @notice sends ETH out of this contract to the recipient
     /// @dev OpenZeppelin's sendValue function

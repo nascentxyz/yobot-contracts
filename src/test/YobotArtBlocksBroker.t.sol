@@ -5,6 +5,9 @@ import {DSTestPlus} from "./utils/DSTestPlus.sol";
 
 import {YobotArtBlocksBroker} from "../YobotArtBlocksBroker.sol";
 
+// Import a mock NFT token to test bot functionality
+import {InfiniteMint} from "../mocks/InfiniteMint.sol";
+
 contract YobotArtBlocksBrokerTest is DSTestPlus {
     YobotArtBlocksBroker public yabb;
 
@@ -15,17 +18,20 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
     /// @dev The bot
     address public bot = 0x6C0439f659ABbd2C52A61fBf5bE36f5ad43d08a4; // legendary mev bot
 
+    /// @dev A Mock NFT
+    InfiniteMint public infiniteMint;
+
     /// @notice testing suite precursors
     function setUp() public {
+        infiniteMint = new InfiniteMint("Mock NFT", "MOCK");
         yabb = new YobotArtBlocksBroker(profitReceiver, botFeeBips);
-
         // Sanity check on the coordinator
         assert(yabb.coordinator() == address(this));
     }
 
-    /*///////////////////////////////////////////////////////////////
-                        SANITY CHECKS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                ORDER PLACEMENT               ///
+    ////////////////////////////////////////////////////
 
     /// @notice Test can't place order when Artblocks Project Id is 0
     /// @param _value value to send - _value = price per nft * _quantity
@@ -72,9 +78,9 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
     //     }
     // }
 
-    /*///////////////////////////////////////////////////////////////
-                        Order Cancelling
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///              ORDER CANCELLATION              ///
+    ////////////////////////////////////////////////////
 
     /// @notice Test user can't cancel unplaced order
     /// @param _artBlocksProjectId Artblocks Project Id
@@ -105,6 +111,8 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
         yabb.cancelOrder(_artBlocksProjectId);
     }
 
+    // TODO: cancel an order, we can't place an order since eoa
+
     /// @notice can cancel outstanding order
     // /// @param _value value to send - _value = price per nft * _quantity
     // /// @param _artBlocksProjectId the ArtBlocks Project Id
@@ -121,9 +129,33 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
     //     yabb.cancelOrder(_artBlocksProjectId);
     // }
 
-    /*///////////////////////////////////////////////////////////////
-                        WITHDRAW FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                  BOT LOGIC                   ///
+    ////////////////////////////////////////////////////
+
+    /// @notice Bot can fill an order
+    /// @param _value value to send - _value = price per nft * _quantity
+    /// @param _quantity the number of erc721 tokens
+    function testFillOrder(
+        uint256 _value,
+        uint128 _quantity
+    ) public {
+        // Mint the bot some NFTs
+        infiniteMint.mint(bot, 1);
+
+        // Place an order
+        // yabb.placeOrder{value: _value}(address(infiniteMint), _quantity);
+        
+        // Bot can fill order
+        // yabb.fillOrder(address(this), address(infiniteMint), 1, _value, bot, true);
+
+        // Burn the minted erc721 so we don't conflict inter-tests
+        infiniteMint.burn(1);
+    }
+
+    ////////////////////////////////////////////////////
+    ///                 WITHDRAWALS                  ///
+    ////////////////////////////////////////////////////
 
     // function testWithdrawal() public {
     //     yabb.withdraw();
