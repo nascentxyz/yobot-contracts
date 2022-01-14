@@ -36,7 +36,7 @@ contract YobotArtBlocksBroker is Coordinator {
     /// @param _profitReceiver The profit receiver for fees
     /// @param _botFeeBips The fee rake
     // solhint-disable-next-line no-empty-blocks
-    constructor(address _profitReceiver, uint256 _botFeeBips) Coordinator(_profitReceiver, _botFeeBips) {}
+    constructor(address _profitReceiver, uint32 _botFeeBips) Coordinator(_profitReceiver, _botFeeBips) {}
 
     /*///////////////////////////////////////////////////////////////
                         USER FUNCTIONS

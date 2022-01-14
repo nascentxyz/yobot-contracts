@@ -19,9 +19,10 @@ contract YobotERC721LimitOrder is Coordinator {
         uint128 quantity;
     }
 
-    // user => token address => {priceInWeiEach, quantity}
+    /// @dev user => token address => {priceInWeiEach, quantity}
     mapping(address => mapping(address => Order)) public orders;
-    // bot => eth balance
+
+    /// @dev bot => eth balance
     mapping(address => uint256) public balances;
 
     /// @notice Emitted whenever a respective individual executes a function
@@ -39,9 +40,9 @@ contract YobotERC721LimitOrder is Coordinator {
     // solhint-disable-next-line no-empty-blocks
     constructor(address _profitReceiver, uint256 _botFeeBips) Coordinator(_profitReceiver, _botFeeBips) {}
 
-    /*///////////////////////////////////////////////////////////////
-                      USER FUNCTIONS
-  //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                 USER FUNCTIONS               ///
+    ////////////////////////////////////////////////////
 
     /// @notice places an open order for a user
     /// @notice users should place orders ONLY for token addresses that they trust

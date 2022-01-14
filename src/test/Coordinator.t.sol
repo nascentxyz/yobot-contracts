@@ -6,34 +6,33 @@ import {DSTestPlus} from "./utils/DSTestPlus.sol";
 import {Coordinator} from "../Coordinator.sol";
 
 contract CoordinatorTest is DSTestPlus {
-    Coordinator public yabb;
+    Coordinator public coord;
 
     /// @dev internal contract state
     address public coordinator;
-    address public profitReceiver;
-    uint256 public botFeeBips;
+    address public profitReceiver = 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B; // VB, a burn address (:
+    uint32 public botFeeBips = 5_000; // 50% 
 
-    function setUp(address _profitReceiver, uint256 _botFeeBips) public {
-        profitReceiver = _profitReceiver;
-        botFeeBips = _botFeeBips;
-        yabb = new Coordinator(profitReceiver, botFeeBips);
+    function setUp() public {
+        coord = new Coordinator(profitReceiver, botFeeBips);
 
         // Sanity check on the coordinator
-        assert(yabb.coordinator() == address(this));
-        coordinator = yabb.coordinator();
+        coordinator = coord.coordinator();
+        assert(coordinator == address(this));
     }
 
-    /*///////////////////////////////////////////////////////////////
-                        COORDINATOR
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                  COORDINATOR                 ///
+    ////////////////////////////////////////////////////
 
     /// @dev property base the changeCoordinator function
     /// @param newCoordinator the new coordinator set with changeCoordinator
     function testChangeCoordinator(address newCoordinator) public {
-        // we need to use a fresh yabb since this test is run multiple times, causing coordinator caching
-        Coordinator tempyabb = new Coordinator(profitReceiver, botFeeBips);
-        tempyabb.changeCoordinator(newCoordinator);
-        assert(tempyabb.coordinator() == newCoordinator);
+        // we need to use a fresh coord since this test is run multiple times, causing coordinator caching
+        Coordinator tempcoord = new Coordinator(profitReceiver, botFeeBips);
+        assert(tempcoord.coordinator() == address(this));
+        tempcoord.changeCoordinator(newCoordinator);
+        assert(tempcoord.coordinator() == newCoordinator);
     }
 
     /// @dev Ensures the onlyCoordinator modifier is working for changeCoordinator
@@ -46,25 +45,27 @@ contract CoordinatorTest is DSTestPlus {
         // if this is the honestCoordinator, changing the coordinator to the `newCoordinator` won't fail
         assert(address(this) != honestCoordinator);
 
-        // create a new yabb with the honest coordinator
-        Coordinator tempyabb = new Coordinator(profitReceiver, botFeeBips);
-        tempyabb.changeCoordinator(honestCoordinator);
-        assert(tempyabb.coordinator() == honestCoordinator);
+        // create a new coord with the honest coordinator
+        Coordinator tempcoord = new Coordinator(profitReceiver, botFeeBips);
+        tempcoord.changeCoordinator(honestCoordinator);
+        assert(tempcoord.coordinator() == honestCoordinator);
 
         // this should fail since the onlyCoordinator modifier exists
-        tempyabb.changeCoordinator(newCoordinator);
+        tempcoord.changeCoordinator(newCoordinator);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                        PROFIT RECEIVER
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                PROFIT RECEIVER               ///
+    ////////////////////////////////////////////////////
 
     /// @dev property base the changeProfitReceiver function
     function testChangeProfitReceiver(address newProfitReceiver) public {
-        // we need to use a fresh yabb since this test is run multiple times, causing coordinator caching
-        Coordinator tempyabb = new Coordinator(profitReceiver, botFeeBips);
-        tempyabb.changeProfitReceiver(newProfitReceiver);
-        assert(tempyabb.profitReceiver() == newProfitReceiver);
+        // we need to use a fresh coord since this test is run multiple times,
+        // causing coordinator caching
+        Coordinator tempcoord = new Coordinator(profitReceiver, botFeeBips);
+        assert(tempcoord.profitReceiver() == profitReceiver);
+        tempcoord.changeProfitReceiver(newProfitReceiver);
+        assert(tempcoord.profitReceiver() == newProfitReceiver);
     }
 
     /// @dev Ensures the onlyCoordinator modifier is working for changeProfitReceiver
@@ -77,58 +78,61 @@ contract CoordinatorTest is DSTestPlus {
         // if this is the honestCoordinator, changing the coordinator to the `newProfitReceiver` won't fail
         assert(address(this) != honestCoordinator);
 
-        // create a new yabb with the honest coordinator
-        Coordinator tempyabb = new Coordinator(profitReceiver, botFeeBips);
-        tempyabb.changeCoordinator(honestCoordinator);
-        assert(tempyabb.coordinator() == honestCoordinator);
+        // create a new coord with the honest coordinator
+        Coordinator tempcoord = new Coordinator(profitReceiver, botFeeBips);
+        tempcoord.changeCoordinator(honestCoordinator);
+        assert(tempcoord.coordinator() == honestCoordinator);
 
         // this should fail since the onlyCoordinator modifier exists
-        tempyabb.changeProfitReceiver(newProfitReceiver);
+        tempcoord.changeProfitReceiver(newProfitReceiver);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                        ART BLOCKS BROKER FEE BIPS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                  BROKER FEE                  ///
+    ////////////////////////////////////////////////////
 
-    /// @notice the new fee must always be less than the old fee
-    /// @dev property base the changeBotFeeBips function
+    /// @dev "property base" test the changeBotFeeBips function
     /// @param oldFee the old botFeeBips specified in the constructor
     /// @param newFee the new botFeeBips set with changeBotFeeBips
-    function testChangeBotFeeBips(uint256 oldFee, uint256 newFee) public {
-        if (newFee < oldFee && oldFee < 500) {
-            Coordinator tempyabb = new Coordinator(address(0), oldFee);
-            tempyabb.changeBotFeeBips(newFee);
-            assert(tempyabb.botFeeBips() == newFee);
-        } else if (newFee > oldFee && newFee < 500) {
-            // in this case, newFee acts as the old fee and vise versa...
-            Coordinator tempyabb = new Coordinator(address(0), newFee);
-            tempyabb.changeBotFeeBips(oldFee);
-            assert(tempyabb.botFeeBips() == oldFee);
-        } else {
-            // Either the fees are equal, or one of the fees is greater than 10,000
-            assert(oldFee == newFee || (oldFee > 500 || newFee > 500));
-        }
+    function testChangeBotFeeBips(uint32 oldFee, uint32 newFee) public {
+        uint32 adjustedOldFee = oldFee % (coord.MAXIMUM_FEE() + 1);
+        uint32 adjustedNewFee = newFee % (coord.MAXIMUM_FEE() + 1);
+        Coordinator tempcoord = new Coordinator(address(0), adjustedOldFee);
+        tempcoord.changeBotFeeBips(adjustedNewFee);
+        assert(tempcoord.botFeeBips() == adjustedNewFee);
     }
 
     /// @dev Ensures the onlyCoordinator modifier is working for changeBotFeeBips
     /// @param honestCoordinator the honest coordinator of a Coordinator contract
-    /// @param newFee the new botFeeBips attempted
-    ///               to be set with changeBotFeeBips and address(this)
-    function testFailchangeBotFeeBips(address honestCoordinator, uint256 newFee)
+    /// @param newFee the new botFeeBips
+    function testFailChangeBotFeeBipsImposter(address honestCoordinator, uint32 newFee)
         public
     {
         // if this is the honestCoordinator, changing the coordinator to the `newFee` won't fail
         assert(address(this) != honestCoordinator);
 
-        // the new botFeeBips must be less than the previous fee
-        assert(newFee < botFeeBips);
+        // Adjust the fee to make sure the fee isn't causing the revert
+        uint32 adjustedFee = newFee % (coord.MAXIMUM_FEE() + 1);
 
-        // create a new yabb with the honest coordinator
-        Coordinator tempyabb = new Coordinator(profitReceiver, botFeeBips);
-        tempyabb.changeCoordinator(honestCoordinator);
-        assert(tempyabb.coordinator() == honestCoordinator);
+        // create a new coord with the honest coordinator
+        Coordinator tempcoord = new Coordinator(profitReceiver, botFeeBips);
+        tempcoord.changeCoordinator(honestCoordinator);
+        assert(tempcoord.coordinator() == honestCoordinator);
 
         // this should fail since the onlyCoordinator modifier exists
-        tempyabb.changeBotFeeBips(newFee);
+        tempcoord.changeBotFeeBips(adjustedFee);
+    }
+
+    /// @dev Ensures that the fee change fails for excessive fees
+    /// @param newFee the new botFeeBips
+    function testFailChangeBotFeeBipsExcessive(uint32 newFee)
+        public
+    {
+        // Make sure the fee > MAXIMUM_FEE()
+        uint32 adjustedFee = newFee;
+        if (adjustedFee < coord.MAXIMUM_FEE()) adjustedFee += coord.MAXIMUM_FEE() - adjustedFee + 1;
+
+        // this should fail since the fee will be > coord.MAXIMUM_FEE()
+        coord.changeBotFeeBips(adjustedFee);
     }
 }

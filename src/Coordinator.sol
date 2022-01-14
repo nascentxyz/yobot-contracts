@@ -6,6 +6,11 @@ pragma solidity 0.8.11;
 /// @param fee uint256 proposed fee percent
 error FeeOverflow(address sender, uint256 fee);
 
+/// Non Coordinator
+/// @param sender The coordinator impersonator address
+/// @param coordinator The expected coordinator address
+error NonCoordinator(address sender, address coordinator);
+
 /// @title Coordinator
 /// @notice Coordinates fees and receivers
 /// @author Andreas Bigger <andreas@nascent.xyz>
@@ -16,28 +21,29 @@ contract Coordinator {
     /// @dev Address of the profit receiver
     address payable public profitReceiver;
 
+    /// @dev Pack the below variables using uint32 values
     /// @dev Fee paid by bots
-    uint256 public botFeeBips;
+    uint32 public botFeeBips;
+
+    /// @dev The absolute maximum fee in bips (10,000 bips or 100%)
+    uint32 public constant MAXIMUM_FEE = 10_000;
 
     /// @dev Modifier restricting msg.sender to solely be the coordinatoooor
     modifier onlyCoordinator() {
-        require(msg.sender == coordinator, "not Coordinator");
+        if (msg.sender != coordinator) revert NonCoordinator(msg.sender, coordinator);
         _;
     }
 
     /// @notice Constructor sets coordinator, profit receiver, and fee in bips
     /// @param _profitReceiver the address of the profit receiver
     /// @param _botFeeBips the fee in bips
-    constructor(address _profitReceiver, uint256 _botFeeBips) {
-        if (botFeeBips > 10_000) revert FeeOverflow(msg.sender, _botFeeBips);
+    /// @dev The fee cannot be greater than 100%
+    constructor(address _profitReceiver, uint32 _botFeeBips) {
+        if (botFeeBips > MAXIMUM_FEE) revert FeeOverflow(msg.sender, _botFeeBips);
         coordinator = msg.sender;
         profitReceiver = payable(_profitReceiver);
         botFeeBips = _botFeeBips;
     }
-
-    /*///////////////////////////////////////////////////////////////
-                        COORDINATOR FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
 
     /// @notice Coordinator can change the stored Coordinator address
     /// @param newCoordinator The address of the new coordinator
@@ -54,8 +60,8 @@ contract Coordinator {
     /// @notice The Coordinator can change the fee amount in bips
     /// @param newBotFeeBips The unsigned integer representing the new fee amount in bips
     /// @dev The fee cannot be greater than 100%
-    function changeBotFeeBips(uint256 newBotFeeBips) external onlyCoordinator {
-        if (newBotFeeBips > 10_000) revert FeeOverflow(msg.sender, newBotFeeBips);
+    function changeBotFeeBips(uint32 newBotFeeBips) external onlyCoordinator {
+        if (newBotFeeBips > MAXIMUM_FEE) revert FeeOverflow(msg.sender, newBotFeeBips);
         botFeeBips = newBotFeeBips;
     }
 }
