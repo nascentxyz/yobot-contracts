@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import {ERC721} from "solmate/tokens/ERC721.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
+import {IERC20} from "../interfaces/IERC20.sol";
 
 /// @notice Maximum number of tokens minted
 error MaximumMints();

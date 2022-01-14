@@ -4,6 +4,11 @@ pragma solidity 0.8.11;
 import {IERC721} from "./interfaces/IERC721.sol";
 import {Coordinator} from "./Coordinator.sol";
 
+/// Require EOA
+/// @param sender The msg sender
+/// @param origin The transaction origin
+error NonEOA(address sender, address origin);
+
 /// @title YobotERC721LimitOrder
 /// @author Andreas Bigger <andreas@nascent.xyz>
 /// @notice Original contract implementation was open-sourced and verified on etherscan at:
@@ -49,18 +54,17 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @param _tokenAddress the erc721 token address
     /// @param _quantity the number of tokens
     function placeOrder(address _tokenAddress, uint128 _quantity) external payable {
-        // CHECKS
         // Removes user foot-guns and garuantees user can receive NFTs
         // We disable linting against tx-origin to purposefully allow EOA checks
         // solhint-disable-next-line avoid-tx-origin
-        require(msg.sender == tx.origin, "NON_EOA_ORIGIN");
+        if (msg.sender != tx.origin) revert NonEOA(msg.sender, tx.origin);
 
         Order memory order = orders[msg.sender][_tokenAddress];
         require(order.quantity == 0, "DUPLICATE_ORDER");
         uint128 priceInWeiEach = uint128(msg.value) / _quantity;
         require(priceInWeiEach > 0, "ZERO_WEI_BID");
+        require(_quantity > 0, "ZERO_QUANTITY_BID");
 
-        // EFFECTS
         orders[msg.sender][_tokenAddress].priceInWeiEach = priceInWeiEach;
         orders[msg.sender][_tokenAddress].quantity = _quantity;
 
@@ -84,9 +88,9 @@ contract YobotERC721LimitOrder is Coordinator {
         emit Action(msg.sender, _tokenAddress, 0, 0, "ORDER_CANCELLED", 0);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                      BOT FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                  BOT LOGIC                   ///
+    ////////////////////////////////////////////////////
 
     /// @notice fill a single order
     /// @param _user the address of the user with the order
