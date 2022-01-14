@@ -5,6 +5,9 @@ import {DSTestPlus} from "./utils/DSTestPlus.sol";
 
 import {YobotERC721LimitOrder} from "../YobotERC721LimitOrder.sol";
 
+// Import a mock NFT token to test bot functionality
+import {InfiniteMint} from "../mocks/InfiniteMint.sol";
+
 contract YobotERC721LimitOrderTest is DSTestPlus {
     YobotERC721LimitOrder public ylo;
 
@@ -12,8 +15,15 @@ contract YobotERC721LimitOrderTest is DSTestPlus {
     address public profitReceiver = 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B; // VB, a burn address (:
     uint32 public botFeeBips = 5_000; // 50% 
 
+    /// @dev The bot
+    address public bot = 0x6C0439f659ABbd2C52A61fBf5bE36f5ad43d08a4; // legendary mev bot
+
+    /// @dev A Mock NFT
+    InfiniteMint public infiniteMint;
+
     /// @notice testing suite precursors
     function setUp() public {
+        infiniteMint = new InfiniteMint("Mock NFT", "MOCK");
         ylo = new YobotERC721LimitOrder(profitReceiver, botFeeBips);
         // Sanity check the coordinator
         assert(ylo.coordinator() == address(this));
@@ -118,6 +128,25 @@ contract YobotERC721LimitOrderTest is DSTestPlus {
     ///                  BOT LOGIC                   ///
     ////////////////////////////////////////////////////
 
+    /// @notice Bot can fill an order
+    /// @param _value value to send - _value = price per nft * _quantity
+    /// @param _quantity the number of erc721 tokens
+    function testFillOrder(
+        uint256 _value,
+        uint128 _quantity
+    ) public {
+        // Mint the bot some NFTs
+        infiniteMint.mint(bot, 1);
+
+        // Place an order
+        ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+        
+        // Bot can fill order
+        ylo.fillOrder(address(this), address(infiniteMint), 1, _value, bot, true);
+
+        // Burn the minted erc721 so we don't conflict inter-tests
+        infiniteMint.burn(1);
+    }
 
 
     ////////////////////////////////////////////////////
@@ -127,4 +156,70 @@ contract YobotERC721LimitOrderTest is DSTestPlus {
     // function testWithdrawal() public {
     //     ylo.withdraw();
     // }
+
+    ////////////////////////////////////////////////////
+    ///                   HELPERS                    ///
+    ////////////////////////////////////////////////////
+
+    /// @notice Views an Order
+    /// @param _user the user who places an order
+    /// @param _tokenAddress the token addres
+    function testViewOrder(
+        address _user,
+        address _tokenAddress
+    ) public {
+        // Without an order, we should get an empty Order struct
+        YobotERC721LimitOrder.Order memory preorder = ylo.viewOrder(_user, _tokenAddress);
+        assert(preorder.priceInWeiEach == 0);
+        assert(preorder.quantity == 0);
+
+        // Place an order
+        ylo.placeOrder{value: 10}(_tokenAddress, 10);
+        
+        // The Order should be populated
+        YobotERC721LimitOrder.Order memory placedorder = ylo.viewOrder(_user, _tokenAddress);
+        assert(placedorder.priceInWeiEach == 1);
+        assert(placedorder.quantity == 10);
+
+        // Cancel the Order
+        ylo.cancelOrder(_tokenAddress);
+
+        // The order should now be deleted
+        YobotERC721LimitOrder.Order memory postorder = ylo.viewOrder(_user, _tokenAddress);
+        assert(postorder.priceInWeiEach == 0);
+        assert(postorder.quantity == 0);
+    }
+
+    /// @notice Views Multiple Orders
+    /// @param _userOne The first user who places an order
+    /// @param _userTwo The second user who places an order
+    /// @param _tokenAddressOne The first token addres
+    /// @param _tokenAddressTwo The second token addres
+    function testViewOrder(
+        address _userOne,
+        address _userTwo,
+        address _tokenAddressOne,
+        address _tokenAddressTwo
+    ) public {
+        // Without an order, we should get an empty Order struct
+        YobotERC721LimitOrder.Order memory preorder = ylo.viewOrder(_userOne, _tokenAddressOne);
+        assert(preorder.priceInWeiEach == 0);
+        assert(preorder.quantity == 0);
+
+        // Place an order from user 1
+        ylo.placeOrder{value: 10}(_tokenAddressOne, 10);
+        
+        // The Order should be populated
+        YobotERC721LimitOrder.Order memory placedorder = ylo.viewOrder(_userOne, _tokenAddressOne);
+        assert(placedorder.priceInWeiEach == 1);
+        assert(placedorder.quantity == 10);
+
+        // Place An order for user 2
+        ylo.placeOrder{value: 10}(_tokenAddressOne, 10);
+
+        // The order should now be deleted
+        YobotERC721LimitOrder.Order memory postorder = ylo.viewOrder(_userOne, _tokenAddressOne);
+        assert(postorder.priceInWeiEach == 0);
+        assert(postorder.quantity == 0);
+    }
 }

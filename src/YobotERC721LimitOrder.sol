@@ -43,7 +43,7 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @param _profitReceiver The profit receiver for fees
     /// @param _botFeeBips The fee rake
     // solhint-disable-next-line no-empty-blocks
-    constructor(address _profitReceiver, uint256 _botFeeBips) Coordinator(_profitReceiver, _botFeeBips) {}
+    constructor(address _profitReceiver, uint32 _botFeeBips) Coordinator(_profitReceiver, _botFeeBips) {}
 
     ////////////////////////////////////////////////////
     ///                 USER FUNCTIONS               ///
@@ -191,9 +191,9 @@ contract YobotERC721LimitOrder is Coordinator {
         return output;
     }
 
-    /*///////////////////////////////////////////////////////////////
-                        WITHDRAW FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                 WITHDRAWALS                  ///
+    ////////////////////////////////////////////////////
 
     /// @notice Allows profitReceiver and bots to withdraw their fees
     /// @dev delete balances on withdrawal to free up storage
@@ -205,9 +205,9 @@ contract YobotERC721LimitOrder is Coordinator {
         sendValue(payable(msg.sender), amount);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                      HELPER FUNCTIONS
-  //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                   HELPERS                    ///
+    ////////////////////////////////////////////////////
 
     /// @notice sends ETH out of this contract to the recipient
     /// @dev OpenZeppelin's sendValue function

@@ -8,11 +8,16 @@ import {YobotArtBlocksBroker} from "../YobotArtBlocksBroker.sol";
 contract YobotArtBlocksBrokerTest is DSTestPlus {
     YobotArtBlocksBroker public yabb;
 
+    /// @dev coordination logic
+    address public profitReceiver = 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B; // VB, a burn address (:
+    uint32 public botFeeBips = 5_000; // 50% 
+
+    /// @dev The bot
+    address public bot = 0x6C0439f659ABbd2C52A61fBf5bE36f5ad43d08a4; // legendary mev bot
+
     /// @notice testing suite precursors
-    /// @param _profitReceiver the _profitReceiver passed to the Coordinator
-    /// @param _botFeeBips the _botFeeBips passed to the Coordinator
-    function setUp(address _profitReceiver, uint256 _botFeeBips) public {
-        yabb = new YobotArtBlocksBroker(_profitReceiver, _botFeeBips);
+    function setUp() public {
+        yabb = new YobotArtBlocksBroker(profitReceiver, botFeeBips);
 
         // Sanity check on the coordinator
         assert(yabb.coordinator() == address(this));
