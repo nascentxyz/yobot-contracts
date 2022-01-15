@@ -9,6 +9,25 @@ import {Coordinator} from "./Coordinator.sol";
 /// @param origin The transaction origin
 error NonEOA(address sender, address origin);
 
+/// Order Out of Bounds
+/// @param user The address of the user
+/// @param orderNumber The requested order number for the user (maps to an order id)
+/// @param maxOrderCount The maximum number of orders a user has placed
+error OrderOOB(address user, uint256 orderNumber, uint256 maxOrderCount);
+
+/// Order Nonexistent
+/// @param user The address of the user
+/// @param orderNumber The requested order number for the user (maps to an order id)
+/// @param orderId The order's Id
+error OrderNonexistent(address user, uint256 orderNumber, uint256 orderId);
+
+/// Invalid Amount
+/// @param sender The address of the msg sender
+/// @param priceInWeiEach The order's priceInWeiEach
+/// @param quantity The order's quantity
+/// @param tokenAddress The order's token address
+error InvalidAmount(address sender, uint256 priceInWeiEach, uint256 quantity, address tokenAddress);
+
 /// @title YobotERC721LimitOrder
 /// @author Andreas Bigger <andreas@nascent.xyz>
 /// @notice Original contract implementation was open-sourced and verified on etherscan at:
@@ -18,14 +37,26 @@ error NonEOA(address sender, address origin);
 contract YobotERC721LimitOrder is Coordinator {
     /// @notice A user's order
     struct Order {
+        /// @dev The Order's Token Address
+        address tokenAddress;
         /// @dev the price to pay for each erc721 token
-        uint128 priceInWeiEach;
+        uint256 priceInWeiEach;
         /// @dev the quantity of tokens to pay
-        uint128 quantity;
+        uint256 quantity;
     }
 
-    /// @dev user => token address => {priceInWeiEach, quantity}
-    mapping(address => mapping(address => Order)) public orders;
+    /// @dev Current Order Id
+    /// @dev Starts at 1, 0 is a deleted order
+    uint256 public orderId = 1;
+
+    /// @dev Mapping from order id to an Order
+    mapping(uint256 => Order) orderStore;
+
+    /// @dev user => order number => order id
+    mapping(address => mapping(uint256 => uint256)) public userOrders;
+
+    /// @dev The number of user orders
+    mapping(address => uint256) public userOrderCount;
 
     /// @dev bot => eth balance
     mapping(address => uint256) public balances;
@@ -36,8 +67,15 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @param _priceInWeiEach The bid price in wei for each ERC721 Token
     /// @param _quantity The number of tokens
     /// @param _action The action being emitted
-    /// @param _optionalTokenId An optional specific token id
-    event Action(address indexed _user, address indexed _tokenAddress, uint256 _priceInWeiEach, uint256 _quantity, string _action, uint256 _optionalTokenId);
+    /// @param _orderNum The Id for the user's order
+    event Action(
+        address indexed _user,
+        address indexed _tokenAddress,
+        uint256 indexed _priceInWeiEach,
+        uint256 indexed _quantity,
+        string _action,
+        uint256 _orderNum
+    );
 
     /// @notice Creates a new yobot erc721 limit order broker
     /// @param _profitReceiver The profit receiver for fees
@@ -53,39 +91,61 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @notice users should place orders ONLY for token addresses that they trust
     /// @param _tokenAddress the erc721 token address
     /// @param _quantity the number of tokens
-    function placeOrder(address _tokenAddress, uint128 _quantity) external payable {
+    function placeOrder(address _tokenAddress, uint256 _quantity) external payable {
         // Removes user foot-guns and garuantees user can receive NFTs
         // We disable linting against tx-origin to purposefully allow EOA checks
         // solhint-disable-next-line avoid-tx-origin
         if (msg.sender != tx.origin) revert NonEOA(msg.sender, tx.origin);
 
-        Order memory order = orders[msg.sender][_tokenAddress];
-        require(order.quantity == 0, "DUPLICATE_ORDER");
-        uint128 priceInWeiEach = uint128(msg.value) / _quantity;
-        require(priceInWeiEach > 0, "ZERO_WEI_BID");
-        require(_quantity > 0, "ZERO_QUANTITY_BID");
+        // Check to make sure the bids are gt zero
+        uint256 priceInWeiEach = msg.value / _quantity;
+        if (priceInWeiEach == 0 || _quantity == 0) revert InvalidAmount(msg.sender, priceInWeiEach, _quantity, _tokenAddress);
 
-        orders[msg.sender][_tokenAddress].priceInWeiEach = priceInWeiEach;
-        orders[msg.sender][_tokenAddress].quantity = _quantity;
+        // Update the Order Id
+        uint256 currOrderId = orderId;
+        orderId += 1;
 
-        emit Action(msg.sender, _tokenAddress, priceInWeiEach, _quantity, "ORDER_PLACED", 0);
+        // Create a new Order
+        orderStore[currOrderId].priceInWeiEach = priceInWeiEach;
+        orderStore[currOrderId].quantity = _quantity;
+        orderStore[currOrderId].tokenAddress = _tokenAddress;
+
+        // Update the user's orders
+        uint256 currUserOrderCount = userOrderCount[msg.sender];
+        userOrders[msg.sender][currUserOrderCount] = currOrderId;
+        userOrderCount[msg.sender] += 1;
+
+        emit Action(msg.sender, _tokenAddress, priceInWeiEach, _quantity, "ORDER_PLACED", currUserOrderCount);
     }
 
     /// @notice Cancels a user's order for the given erc721 token
-    /// @param _tokenAddress the erc721 token address
-    function cancelOrder(address _tokenAddress) external {
-        // CHECKS
-        Order memory order = orders[msg.sender][_tokenAddress];
+    /// @param _orderNum The user's order number
+    function cancelOrder(uint256 _orderNum) external {
+        // Check to make sure the user's order is in bounds
+        uint256 currUserOrderCount = userOrderCount[msg.sender];
+        if (_orderNum >= currUserOrderCount) revert OrderOOB(msg.sender, _orderNum, currUserOrderCount);
+
+        // Get the id for the given user order num
+        uint256 currOrderId = userOrders[msg.sender][_orderNum];
+        
+        // Revert if the order id is 0, already deleted
+        if (currOrderId == 0) revert OrderNonexistent(msg.sender, _orderNum, currOrderId);
+
+        // Get the order
+        Order memory order = orderStore[currOrderId];
         uint256 amountToSendBack = order.priceInWeiEach * order.quantity;
-        require(amountToSendBack != 0, "NONEXISTANT_ORDER");
+        if (amountToSendBack == 0) revert InvalidAmount(msg.sender, order.priceInWeiEach, order.quantity, order.tokenAddress);
+        
+        // Delete the order
+        delete orderStore[currOrderId];
 
-        // EFFECTS
-        delete orders[msg.sender][_tokenAddress];
+        // Delete the order id from the userOrders mapping
+        delete userOrders[msg.sender][_orderNum];
 
-        // INTERACTIONS
+        // Send the value back to the user
         sendValue(payable(msg.sender), amountToSendBack);
 
-        emit Action(msg.sender, _tokenAddress, 0, 0, "ORDER_CANCELLED", 0);
+        emit Action(msg.sender, _tokenAddress, order.priceInWeiEach, order.quantity, "ORDER_CANCELLED", 0);
     }
 
     ////////////////////////////////////////////////////

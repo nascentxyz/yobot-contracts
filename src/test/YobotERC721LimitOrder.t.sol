@@ -89,8 +89,20 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
             startHoax(new_sender);
             ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
             vm.stopPrank();
+        } else if (_value < _quantity) {
+            // This should fail since (price/quantity) == 0
+            vm.expectRevert("ZERO_WEI_BID");
+            address new_sender = address(1337);
+            startHoax(new_sender);
+            ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+            vm.stopPrank();
         } else {
-
+            // This should fail since either the quantity is 0
+            vm.expectRevert("ZERO_QUANTITY_BID");
+            address new_sender = address(1337);
+            startHoax(new_sender);
+            ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+            vm.stopPrank();
         }
     }
 
