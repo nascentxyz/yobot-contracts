@@ -110,13 +110,6 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     ///              ORDER CANCELLATION              ///
     ////////////////////////////////////////////////////
 
-    /// @notice Test user can't cancel unplaced order
-    /// @param _tokenAddress ERC721 Token Address
-    function testFailCancelUnplacedOrder(address _tokenAddress) public {
-        // this should fail with `NONEXISTANT_ORDER`
-        ylo.cancelOrder(_tokenAddress);
-    }
-
     /// @notice user can't cancel duplicate orders
     /// @param _value value to send - _value = price per nft * _quantity
     /// @param _tokenAddress ERC721 Token Address
@@ -135,20 +128,23 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     // TODO: cancel an order, we can't place an order since eoa
 
     /// @notice can cancel outstanding order
-    // /// @param _value value to send - _value = price per nft * _quantity
-    // /// @param _tokenAddress ERC721 Token Address
-    // /// @param _quantity the number of erc721 tokens
-    // function testCancelOrder(
-    //     uint256 _value,
-    //     address _tokenAddress,
-    //     uint128 _quantity
-    // ) public {
-    //     ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-    //     require(_tokenAddress != 0, "NONEXISTANT_ORDER");
-    //     ylo.cancelOrder(_tokenAddress);
-    //     // this should fail with `ORDER_NOT_FOUND`
-    //     ylo.cancelOrder(_tokenAddress);
-    // }
+    /// @param _value value to send - _value = price per nft * _quantity
+    /// @param _tokenAddress ERC721 Token Address
+    /// @param _quantity the number of erc721 tokens
+    function testCancelOrder(
+        uint256 _value,
+        address _tokenAddress,
+        uint128 _quantity
+    ) public {
+        // Expect Revert on an unplaced order
+        bytes memory data = abi.encodePacked(bytes4(keccak256("OrderOOB(address,uint256,uint256)")));
+        vm.expectRevert(data);
+        ylo.cancelOrder(_tokenAddress);
+        // ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+        // require(_tokenAddress != 0, "NONEXISTANT_ORDER");
+        // ylo.cancelOrder(_tokenAddress);
+        // ylo.cancelOrder(_tokenAddress);
+    }
 
     ////////////////////////////////////////////////////
     ///                  BOT LOGIC                   ///
