@@ -28,6 +28,14 @@ error OrderNonexistent(address user, uint256 orderNumber, uint256 orderId);
 /// @param tokenAddress The order's token address
 error InvalidAmount(address sender, uint256 priceInWeiEach, uint256 quantity, address tokenAddress);
 
+/// Insufficient price in wei
+/// @param sender The address of the msg sender
+/// @param orderId The order's Id
+/// @param tokenId The ERC721 Token ID
+/// @param expectedPriceInWeiEach The expected priceInWeiEach
+/// @param priceInWeiEach The order's actual priceInWeiEach from internal store
+error InsufficientPrice(sender, orderId, tokenId, expectedPriceInWeiEach, priceInWeiEach);
+
 /// @title YobotERC721LimitOrder
 /// @author Andreas Bigger <andreas@nascent.xyz>
 /// @notice Original contract implementation was open-sourced and verified on etherscan at:
@@ -37,12 +45,16 @@ error InvalidAmount(address sender, uint256 priceInWeiEach, uint256 quantity, ad
 contract YobotERC721LimitOrder is Coordinator {
     /// @notice A user's order
     struct Order {
+        /// @dev The Order owner
+        address owner;
         /// @dev The Order's Token Address
         address tokenAddress;
         /// @dev the price to pay for each erc721 token
         uint256 priceInWeiEach;
         /// @dev the quantity of tokens to pay
         uint256 quantity;
+        /// @dev the order number for the user, used for reverse mapping
+        uint256 num;
     }
 
     /// @dev Current Order Id
@@ -67,13 +79,15 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @param _priceInWeiEach The bid price in wei for each ERC721 Token
     /// @param _quantity The number of tokens
     /// @param _action The action being emitted
-    /// @param _orderNum The Id for the user's order
+    /// @param _orderId The order's id
+    /// @param _orderNum The user<>num order
     event Action(
         address indexed _user,
         address indexed _tokenAddress,
         uint256 indexed _priceInWeiEach,
         uint256 indexed _quantity,
         string _action,
+        uint256 _orderId,
         uint256 _orderNum
     );
 
@@ -105,17 +119,21 @@ contract YobotERC721LimitOrder is Coordinator {
         uint256 currOrderId = orderId;
         orderId += 1;
 
+        // Get the current order number for the user
+        uint256 currUserOrderCount = userOrderCount[msg.sender];
+
         // Create a new Order
+        orderStore[currOrderId].owner = msg.sender;
+        orderStore[currOrderId].tokenAddress = _tokenAddress;
         orderStore[currOrderId].priceInWeiEach = priceInWeiEach;
         orderStore[currOrderId].quantity = _quantity;
-        orderStore[currOrderId].tokenAddress = _tokenAddress;
+        orderStore[currOrderId].num = currUserOrderCount;
 
         // Update the user's orders
-        uint256 currUserOrderCount = userOrderCount[msg.sender];
         userOrders[msg.sender][currUserOrderCount] = currOrderId;
         userOrderCount[msg.sender] += 1;
 
-        emit Action(msg.sender, _tokenAddress, priceInWeiEach, _quantity, "ORDER_PLACED", currUserOrderCount);
+        emit Action(msg.sender, _tokenAddress, priceInWeiEach, _quantity, "ORDER_PLACED", currOrderId, currUserOrderCount);
     }
 
     /// @notice Cancels a user's order for the given erc721 token
@@ -145,35 +163,35 @@ contract YobotERC721LimitOrder is Coordinator {
         // Send the value back to the user
         sendValue(payable(msg.sender), amountToSendBack);
 
-        emit Action(msg.sender, _tokenAddress, order.priceInWeiEach, order.quantity, "ORDER_CANCELLED", 0);
+        emit Action(msg.sender, _tokenAddress, order.priceInWeiEach, order.quantity, "ORDER_CANCELLED", currOrderId, _orderNum);
     }
 
     ////////////////////////////////////////////////////
     ///                  BOT LOGIC                   ///
     ////////////////////////////////////////////////////
 
-    /// @notice fill a single order
-    /// @param _user the address of the user with the order
-    /// @param _tokenAddress the address of the erc721 token
+    /// @notice Fill a single order
+    /// @param _orderId The id of the order
     /// @param _tokenId the token id to mint
     /// @param _expectedPriceInWeiEach the price to pay
     /// @param _profitTo the address to send the fee to
     /// @param _sendNow whether or not to send the fee now
     function fillOrder(
-        address _user,
-        address _tokenAddress,
+        address _orderId,
         uint256 _tokenId,
         uint256 _expectedPriceInWeiEach,
         address _profitTo,
         bool _sendNow
     ) public returns (uint256) {
-        // CHECKS
-        Order memory order = orders[_user][_tokenAddress];
-        require(order.quantity > 0, "NO_OUTSTANDING_USER_ORDER");
-        // Protects bots from users frontrunning them
-        require(order.priceInWeiEach >= _expectedPriceInWeiEach, "INSUFFICIENT_EXPECTED_PRICE");
+        Order memory order = orderStore[_orderId];
 
-        // EFFECTS
+        // Make sure the order isn't deleted
+        uint256 orderIdFromMap = userOrders[order.owner][order.num];
+        if (order.quantity == 0 || order.priceInWeiEach == 0 || orderIdFromMap == 0) revert InvalidAmount(order.owner, order.priceInWeiEach, order.quantity, order.tokenAddress);
+
+        // Protects bots from users frontrunning them
+        if (order.priceInWeiEach < _expectedPriceInWeiEach) revert InsufficientPrice(msg.sender, _orderId, _tokenId, _expectedPriceInWeiEach, order.priceInWeiEach);
+
         // This reverts on underflow
         orders[_user][_tokenAddress].quantity = order.quantity - 1;
         uint256 botFee = (order.priceInWeiEach * botFeeBips) / 10_000;
