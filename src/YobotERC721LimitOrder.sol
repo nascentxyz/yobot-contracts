@@ -34,7 +34,7 @@ error InvalidAmount(address sender, uint256 priceInWeiEach, uint256 quantity, ad
 /// @param tokenId The ERC721 Token ID
 /// @param expectedPriceInWeiEach The expected priceInWeiEach
 /// @param priceInWeiEach The order's actual priceInWeiEach from internal store
-error InsufficientPrice(sender, orderId, tokenId, expectedPriceInWeiEach, priceInWeiEach);
+error InsufficientPrice(address sender, uint256 orderId, uint256 tokenId, uint256 expectedPriceInWeiEach, uint256 priceInWeiEach);
 
 /// Inconsistent Arguments
 /// @param sender The address of the msg sender
@@ -90,7 +90,7 @@ contract YobotERC721LimitOrder is Coordinator {
         address indexed _user,
         address indexed _tokenAddress,
         uint256 indexed _priceInWeiEach,
-        uint256 indexed _quantity,
+        uint256 _quantity,
         string _action,
         uint256 _orderId,
         uint256 _orderNum,
@@ -169,7 +169,7 @@ contract YobotERC721LimitOrder is Coordinator {
         // Send the value back to the user
         sendValue(payable(msg.sender), amountToSendBack);
 
-        emit Action(msg.sender, _tokenAddress, order.priceInWeiEach, order.quantity, "ORDER_CANCELLED", currOrderId, _orderNum, 0);
+        emit Action(msg.sender, order.tokenAddress, order.priceInWeiEach, order.quantity, "ORDER_CANCELLED", currOrderId, _orderNum, 0);
     }
 
     ////////////////////////////////////////////////////
@@ -183,7 +183,7 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @param _profitTo the address to send the fee to
     /// @param _sendNow whether or not to send the fee now
     function fillOrder(
-        address _orderId,
+        uint256 _orderId,
         uint256 _tokenId,
         uint256 _expectedPriceInWeiEach,
         address _profitTo,
@@ -205,7 +205,7 @@ contract YobotERC721LimitOrder is Coordinator {
 
         // Transfer NFT to user (benign reentrancy possible here)
         // ERC721-compliant contracts revert on failure here
-        IERC721(_tokenAddress).safeTransferFrom(msg.sender, _user, _tokenId);
+        IERC721(order.tokenAddress).safeTransferFrom(msg.sender, order.owner, _tokenId);
 
         // Pay the bot with the remaining amount
         uint256 botPayment = order.priceInWeiEach - botFee;
@@ -216,12 +216,12 @@ contract YobotERC721LimitOrder is Coordinator {
         }
 
         // Emit the action later so we can log trace on a bot dashboard
-        emit Action(_user, _tokenAddress, order.priceInWeiEach, order.quantity - 1, "ORDER_FILLED", _orderId, order.num, _tokenId);
+        emit Action(order.owner, order.tokenAddress, order.priceInWeiEach, order.quantity - 1, "ORDER_FILLED", _orderId, order.num, _tokenId);
 
         // Clear up if the quantity is now 0
         if (order.quantity == 0) {
             delete orderStore[_orderId];
-            delete userOrders[msg.sender][_orderNum];
+            delete userOrders[msg.sender][order.num];
         }
 
         // RETURN
@@ -231,56 +231,51 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @notice allows a bot to fill multiple outstanding orders
     /// @dev there should be one token id and token price specified for each users
     /// @dev So, _users.length == _tokenIds.length == _expectedPriceInWeiEach.length
-    /// @param _users a list of users to fill orders for
-    /// @param _tokenAddress the address of the erc721 token
+    /// @param _orderIds a list of order ids
     /// @param _tokenIds a list of token ids
     /// @param _expectedPriceInWeiEach the price of each token
     /// @param _profitTo the address to send the bot's profit to
     /// @param _sendNow whether the profit should be sent immediately
     function fillMultipleOrdersOptimized(
-        address[] memory _users,
-        address _tokenAddress,
+        uint256[] memory _orderIds,
         uint256[] memory _tokenIds,
         uint256[] memory _expectedPriceInWeiEach,
         address _profitTo,
         bool _sendNow
     ) external returns (uint256[] memory) {
-        if (_users.length != _tokenIds.length || _tokenIds.length != _expectedPriceInWeiEach.length) revert InconsistentArguments(msg.sender);
-        uint256[] memory output = new uint256[](_users.length);
-        for (uint256 i = 0; i < _users.length; i++) {
-            output[i] = fillOrder(_users[i], _tokenAddress, _tokenIds[i], _expectedPriceInWeiEach[i], _profitTo, _sendNow);
+        if (_orderIds.length != _tokenIds.length || _tokenIds.length != _expectedPriceInWeiEach.length) revert InconsistentArguments(msg.sender);
+        uint256[] memory output = new uint256[](_orderIds.length);
+        for (uint256 i = 0; i < _orderIds.length; i++) {
+            output[i] = fillOrder(_orderIds[i], _tokenIds[i], _expectedPriceInWeiEach[i], _profitTo, _sendNow);
         }
         return output;
     }
 
     /// @notice allows a bot to fill multiple outstanding orders with
     /// @dev all argument array lengths should be equal
-    /// @param _users a list of users to fill orders for
-    /// @param _tokenAddresses a list of erc721 token addresses
+    /// @param _orderIds a list of order ids
     /// @param _tokenIds a list of token ids
     /// @param _expectedPriceInWeiEach the price of each token
     /// @param _profitTo the addresses to send the bot's profit to
     /// @param _sendNow whether the profit should be sent immediately
     function fillMultipleOrdersUnOptimized(
-        address[] memory _users,
-        address[] memory _tokenAddresses,
+        uint256[] memory _orderIds,
         uint256[] memory _tokenIds,
         uint256[] memory _expectedPriceInWeiEach,
         address[] memory _profitTo,
         bool[] memory _sendNow
     ) external returns (uint256[] memory) {
         if (
-            _users.length != _tokenAddresses.length
-            || _tokenAddresses.length != _tokenIds.length
+            _orderIds.length != _tokenIds.length
             || _tokenIds.length != _expectedPriceInWeiEach.length
             || _expectedPriceInWeiEach.length != _profitTo.length
             || _profitTo.length != _sendNow.length
         ) revert InconsistentArguments(msg.sender);
 
         // Fill the orders iteratively
-        uint256[] memory output = new uint256[](_users.length);
-        for (uint256 i = 0; i < _users.length; i++) {
-            output[i] = fillOrder(_users[i], _tokenAddresses[i], _tokenIds[i], _expectedPriceInWeiEach[i], _profitTo[i], _sendNow[i]);
+        uint256[] memory output = new uint256[](_orderIds.length);
+        for (uint256 i = 0; i < _orderIds.length; i++) {
+            output[i] = fillOrder(_orderIds[i], _tokenIds[i], _expectedPriceInWeiEach[i], _profitTo[i], _sendNow[i]);
         }
         return output;
     }
@@ -317,7 +312,7 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @notice Returns an open order for a user and order number pair
     /// @param _user The user
     /// @param _orderNum The order number (NOT ID)
-    function viewUserOrder(address _user, uint256 _orderNum) external view returns (Order memory) {
+    function viewUserOrder(address _user, uint256 _orderNum) public view returns (Order memory) {
         // Revert if the order id is 0
         uint256 _orderId = userOrders[_user][_orderNum];
         if (_orderId == 0) revert OrderNonexistent(_user, _orderNum, _orderId);
@@ -326,7 +321,7 @@ contract YobotERC721LimitOrder is Coordinator {
 
     /// @notice Returns all open orders for a given user
     /// @param _user The user
-    function viewUserOrders(address _user) external view returns (Order[] memory output) {
+    function viewUserOrders(address _user) public view returns (Order[] memory output) {
         uint256 _userOrderCount = userOrderCount[_user];
         Order[] memory output = new Order[](_userOrderCount);
         for (uint256 i = 0; i < _userOrderCount; i += 1) {
@@ -335,14 +330,12 @@ contract YobotERC721LimitOrder is Coordinator {
         }
     }
 
-    /// @notice returns the open orders for a given user and list of tokens
+    /// @notice Returns the open orders for a list of users
     /// @param _users the users address
-    /// @param _tokenAddresses a list of token addresses
-    function viewMultipleOrders(address[] memory _users, address[] memory _tokenAddresses) external view returns (Order[] memory output) {
-        Order[] memory output = new Order[](_users.length);
+    function viewMultipleOrders(address[] memory _users) public view returns (Order[][] memory output) {
+        Order[][] memory output = new Order[][](_users.length);
         for (uint256 i = 0; i < _users.length; i++) {
-            // TODO
-            output[i] = viewUserOrders orders[_users[i]][_tokenAddresses[i]];
+            output[i] = viewUserOrders(_users[i]);
         }
     }
 }
