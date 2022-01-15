@@ -2,14 +2,19 @@
 pragma solidity 0.8.11;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
+import {stdCheats} from "@std/stdlib.sol";
+import {Vm} from "@std/Vm.sol";
 
 import {YobotERC721LimitOrder} from "../YobotERC721LimitOrder.sol";
 
 // Import a mock NFT token to test bot functionality
 import {InfiniteMint} from "../mocks/InfiniteMint.sol";
 
-contract YobotERC721LimitOrderTest is DSTestPlus {
+contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     YobotERC721LimitOrder public ylo;
+
+    /// @dev Use forge-std Vm logic
+    Vm public constant vm = Vm(HEVM_ADDRESS);
 
     /// @dev coordination logic
     address public profitReceiver = 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B; // VB, a burn address (:
@@ -74,11 +79,20 @@ contract YobotERC721LimitOrderTest is DSTestPlus {
     // TODO: orders need to be placed from an EOA, how to mock
 
     /// @notice Test can place order
-    // function testPlaceOrder(uint256 _value, uint256 _tokenAddress, uint128 _quantity) public {
-    //     if (_tokenAddress > 0) {
-    //         ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-    //     }
-    // }
+    /// @param _value The amount of wei to send
+    /// @param _quantity the number of erc721 tokens
+    function testPlaceOrder(uint32 _value, uint128 _quantity) public {
+        if(_quantity > 0 && _value >= _quantity) {
+            // Uses the `prank` cheatcode to mock msg.sender in a low level call
+            // https://github.com/gakonst/foundry/blob/master/evm-adapters/testdata/CheatCodes.sol
+            address new_sender = address(1337);
+            startHoax(new_sender);
+            ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+            vm.stopPrank();
+        } else {
+
+        }
+    }
 
     ////////////////////////////////////////////////////
     ///              ORDER CANCELLATION              ///
