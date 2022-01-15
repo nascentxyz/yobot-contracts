@@ -10,13 +10,13 @@ import {Coordinator} from "./Coordinator.sol";
 error NonEOA(address sender, address origin);
 
 /// Order Out of Bounds
-/// @param user The address of the user
+/// @param sender The address of the msg sender
 /// @param orderNumber The requested order number for the user (maps to an order id)
 /// @param maxOrderCount The maximum number of orders a user has placed
-error OrderOOB(address user, uint256 orderNumber, uint256 maxOrderCount);
+error OrderOOB(address sender, uint256 orderNumber, uint256 maxOrderCount);
 
 /// Order Nonexistent
-/// @param user The address of the user
+/// @param user The address of the user who owns the order
 /// @param orderNumber The requested order number for the user (maps to an order id)
 /// @param orderId The order's Id
 error OrderNonexistent(address user, uint256 orderNumber, uint256 orderId);
@@ -35,6 +35,10 @@ error InvalidAmount(address sender, uint256 priceInWeiEach, uint256 quantity, ad
 /// @param expectedPriceInWeiEach The expected priceInWeiEach
 /// @param priceInWeiEach The order's actual priceInWeiEach from internal store
 error InsufficientPrice(sender, orderId, tokenId, expectedPriceInWeiEach, priceInWeiEach);
+
+/// Inconsistent Arguments
+/// @param sender The address of the msg sender
+error InconsistentArguments(address sender);
 
 /// @title YobotERC721LimitOrder
 /// @author Andreas Bigger <andreas@nascent.xyz>
@@ -81,6 +85,7 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @param _action The action being emitted
     /// @param _orderId The order's id
     /// @param _orderNum The user<>num order
+    /// @param _tokenId The optional token id (used primarily on bot fills)
     event Action(
         address indexed _user,
         address indexed _tokenAddress,
@@ -88,7 +93,8 @@ contract YobotERC721LimitOrder is Coordinator {
         uint256 indexed _quantity,
         string _action,
         uint256 _orderId,
-        uint256 _orderNum
+        uint256 _orderNum,
+        uint256 _tokenId
     );
 
     /// @notice Creates a new yobot erc721 limit order broker
@@ -133,7 +139,7 @@ contract YobotERC721LimitOrder is Coordinator {
         userOrders[msg.sender][currUserOrderCount] = currOrderId;
         userOrderCount[msg.sender] += 1;
 
-        emit Action(msg.sender, _tokenAddress, priceInWeiEach, _quantity, "ORDER_PLACED", currOrderId, currUserOrderCount);
+        emit Action(msg.sender, _tokenAddress, priceInWeiEach, _quantity, "ORDER_PLACED", currOrderId, currUserOrderCount, 0);
     }
 
     /// @notice Cancels a user's order for the given erc721 token
@@ -163,7 +169,7 @@ contract YobotERC721LimitOrder is Coordinator {
         // Send the value back to the user
         sendValue(payable(msg.sender), amountToSendBack);
 
-        emit Action(msg.sender, _tokenAddress, order.priceInWeiEach, order.quantity, "ORDER_CANCELLED", currOrderId, _orderNum);
+        emit Action(msg.sender, _tokenAddress, order.priceInWeiEach, order.quantity, "ORDER_CANCELLED", currOrderId, _orderNum, 0);
     }
 
     ////////////////////////////////////////////////////
@@ -183,7 +189,7 @@ contract YobotERC721LimitOrder is Coordinator {
         address _profitTo,
         bool _sendNow
     ) public returns (uint256) {
-        Order memory order = orderStore[_orderId];
+        Order storage order = orderStore[_orderId];
 
         // Make sure the order isn't deleted
         uint256 orderIdFromMap = userOrders[order.owner][order.num];
@@ -193,11 +199,10 @@ contract YobotERC721LimitOrder is Coordinator {
         if (order.priceInWeiEach < _expectedPriceInWeiEach) revert InsufficientPrice(msg.sender, _orderId, _tokenId, _expectedPriceInWeiEach, order.priceInWeiEach);
 
         // This reverts on underflow
-        orders[_user][_tokenAddress].quantity = order.quantity - 1;
+        order.quantity -= 1;
         uint256 botFee = (order.priceInWeiEach * botFeeBips) / 10_000;
         balances[profitReceiver] += botFee;
 
-        // INTERACTIONS
         // Transfer NFT to user (benign reentrancy possible here)
         // ERC721-compliant contracts revert on failure here
         IERC721(_tokenAddress).safeTransferFrom(msg.sender, _user, _tokenId);
@@ -211,9 +216,13 @@ contract YobotERC721LimitOrder is Coordinator {
         }
 
         // Emit the action later so we can log trace on a bot dashboard
-        emit Action(_user, _tokenAddress, order.priceInWeiEach, order.quantity - 1, "ORDER_FILLED", _tokenId);
+        emit Action(_user, _tokenAddress, order.priceInWeiEach, order.quantity - 1, "ORDER_FILLED", _orderId, order.num, _tokenId);
 
-        // TODO: delete order ?
+        // Clear up if the quantity is now 0
+        if (order.quantity == 0) {
+            delete orderStore[_orderId];
+            delete userOrders[msg.sender][_orderNum];
+        }
 
         // RETURN
         return botPayment;
@@ -236,7 +245,7 @@ contract YobotERC721LimitOrder is Coordinator {
         address _profitTo,
         bool _sendNow
     ) external returns (uint256[] memory) {
-        require(_users.length == _tokenIds.length && _tokenIds.length == _expectedPriceInWeiEach.length, "ARRAY_LENGTH_MISMATCH");
+        if (_users.length != _tokenIds.length || _tokenIds.length != _expectedPriceInWeiEach.length) revert InconsistentArguments(msg.sender);
         uint256[] memory output = new uint256[](_users.length);
         for (uint256 i = 0; i < _users.length; i++) {
             output[i] = fillOrder(_users[i], _tokenAddress, _tokenIds[i], _expectedPriceInWeiEach[i], _profitTo, _sendNow);
@@ -260,8 +269,15 @@ contract YobotERC721LimitOrder is Coordinator {
         address[] memory _profitTo,
         bool[] memory _sendNow
     ) external returns (uint256[] memory) {
-        // verify argument array lengths are equal
-        require(_users.length == _tokenAddresses.length && _tokenAddresses.length == _tokenIds.length && _tokenIds.length == _expectedPriceInWeiEach.length && _expectedPriceInWeiEach.length == _profitTo.length && _profitTo.length == _sendNow.length, "ARRAY_LENGTH_MISMATCH");
+        if (
+            _users.length != _tokenAddresses.length
+            || _tokenAddresses.length != _tokenIds.length
+            || _tokenIds.length != _expectedPriceInWeiEach.length
+            || _expectedPriceInWeiEach.length != _profitTo.length
+            || _profitTo.length != _sendNow.length
+        ) revert InconsistentArguments(msg.sender);
+
+        // Fill the orders iteratively
         uint256[] memory output = new uint256[](_users.length);
         for (uint256 i = 0; i < _users.length; i++) {
             output[i] = fillOrder(_users[i], _tokenAddresses[i], _tokenIds[i], _expectedPriceInWeiEach[i], _profitTo[i], _sendNow[i]);
@@ -298,19 +314,35 @@ contract YobotERC721LimitOrder is Coordinator {
         require(success, "Address: unable to send value, recipient may have reverted");
     }
 
-    /// @notice returns an open order for a given user and token address
-    /// @param _user the users address
-    /// @param _tokenAddress the address of the token
-    function viewOrder(address _user, address _tokenAddress) external view returns (Order memory) {
-        return orders[_user][_tokenAddress];
+    /// @notice Returns an open order for a user and order number pair
+    /// @param _user The user
+    /// @param _orderNum The order number (NOT ID)
+    function viewUserOrder(address _user, uint256 _orderNum) external view returns (Order memory) {
+        // Revert if the order id is 0
+        uint256 _orderId = userOrders[_user][_orderNum];
+        if (_orderId == 0) revert OrderNonexistent(_user, _orderNum, _orderId);
+        return orderStore[_orderId];
+    }
+
+    /// @notice Returns all open orders for a given user
+    /// @param _user The user
+    function viewUserOrders(address _user) external view returns (Order[] memory output) {
+        uint256 _userOrderCount = userOrderCount[_user];
+        Order[] memory output = new Order[](_userOrderCount);
+        for (uint256 i = 0; i < _userOrderCount; i += 1) {
+            uint256 _orderId = userOrders[_user][i];
+            output[i] = orderStore[_orderId]; 
+        }
     }
 
     /// @notice returns the open orders for a given user and list of tokens
     /// @param _users the users address
     /// @param _tokenAddresses a list of token addresses
-    function viewOrders(address[] memory _users, address[] memory _tokenAddresses) external view returns (Order[] memory) {
+    function viewMultipleOrders(address[] memory _users, address[] memory _tokenAddresses) external view returns (Order[] memory output) {
         Order[] memory output = new Order[](_users.length);
-        for (uint256 i = 0; i < _users.length; i++) output[i] = orders[_users[i]][_tokenAddresses[i]];
-        return output;
+        for (uint256 i = 0; i < _users.length; i++) {
+            // TODO
+            output[i] = viewUserOrders orders[_users[i]][_tokenAddresses[i]];
+        }
     }
 }
