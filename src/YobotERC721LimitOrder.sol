@@ -150,14 +150,14 @@ contract YobotERC721LimitOrder is Coordinator {
         // Get the id for the given user order num
         uint256 currOrderId = userOrders[msg.sender][_orderNum];
         
-        // Revert if the order id is 0, already deleted
+        // Revert if the order id is 0, already deleted or filled
         if (currOrderId == 0) revert OrderNonexistent(msg.sender, _orderNum, currOrderId);
 
         // Get the order
         Order memory order = orderStore[currOrderId];
         uint256 amountToSendBack = order.priceInWeiEach * order.quantity;
         if (amountToSendBack == 0) revert InvalidAmount(msg.sender, order.priceInWeiEach, order.quantity, order.tokenAddress);
-        
+
         // Delete the order
         delete orderStore[currOrderId];
 
@@ -196,14 +196,14 @@ contract YobotERC721LimitOrder is Coordinator {
         // Protects bots from users frontrunning them
         if (order.priceInWeiEach < _expectedPriceInWeiEach) revert InsufficientPrice(msg.sender, _orderId, _tokenId, _expectedPriceInWeiEach, order.priceInWeiEach);
 
+        // Transfer NFT to user (benign reentrancy possible here)
+        // ERC721-compliant contracts revert on failure here
+        IERC721(order.tokenAddress).safeTransferFrom(msg.sender, order.owner, _tokenId);
+        
         // This reverts on underflow
         order.quantity -= 1;
         uint256 botFee = (order.priceInWeiEach * botFeeBips) / 10_000;
         balances[profitReceiver] += botFee;
-
-        // Transfer NFT to user (benign reentrancy possible here)
-        // ERC721-compliant contracts revert on failure here
-        IERC721(order.tokenAddress).safeTransferFrom(msg.sender, order.owner, _tokenId);
 
         // Pay the bot with the remaining amount
         uint256 botPayment = order.priceInWeiEach - botFee;
@@ -219,7 +219,7 @@ contract YobotERC721LimitOrder is Coordinator {
         // Clear up if the quantity is now 0
         if (order.quantity == 0) {
             delete orderStore[_orderId];
-            delete userOrders[msg.sender][order.num];
+            userOrders[order.owner][order.num] = 0;
         }
 
         // RETURN

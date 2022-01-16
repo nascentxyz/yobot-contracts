@@ -101,15 +101,16 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     ) public {
         // Hoax the sender and tx.origin
         address new_sender = address(1337);
-        startHoax(new_sender, new_sender);
+        startHoax(new_sender, new_sender, type(uint256).max);
 
         // Revert with an out of bounds if the orderNum is greater than the user's current order count
         vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", new_sender, 1, 0));
         ylo.cancelOrder(1);
 
         // Make sure our arguments are valid
-        if(_quantity > 0) _quantity = 1;
-        if (_value >= _quantity) _value = _quantity;
+        if(_quantity == 0) _quantity = 1;
+        if (_value < _quantity) _value = _quantity;
+        if(_tokenAddress == address(0)) _tokenAddress = address(1336);
 
         // Place the order
         ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
@@ -130,6 +131,9 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         // Expect Revert since our msg.sender is different
         vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", address(this), 0, 0));
         ylo.cancelOrder(0);
+
+        // Stop the prank
+        vm.stopPrank();
     }
 
     ////////////////////////////////////////////////////
@@ -147,11 +151,12 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     ) public {
         // Hoax the sender and tx.origin
         address new_sender = address(1337);
-        startHoax(new_sender, new_sender);
+        startHoax(new_sender, new_sender, type(uint256).max);
 
         // Make sure our arguments are valid
-        if(_quantity > 0) _quantity = 1;
-        if (_value >= _quantity) _value = _quantity;
+        if(_quantity == 0) _quantity = 1;
+        if ((_value / 2) < _quantity) _value = 2 * _quantity;
+        if(_tokenAddress == address(0)) _tokenAddress = address(1336);
 
         // Place the order
         ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
@@ -160,8 +165,9 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         ylo.cancelOrder(0);
 
         // Place more orders
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+        // Make sure we don't overflow uint256
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
 
         // We should be able to cancel orders 1+2
         ylo.cancelOrder(1);
@@ -193,11 +199,12 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     ) public {
         // Hoax the sender and tx.origin
         address new_sender = address(1337);
-        startHoax(new_sender, new_sender);
+        startHoax(new_sender, new_sender, type(uint256).max);
 
         // Make sure our arguments are valid
-        if(_quantity > 0) _quantity = 1;
-        if (_value >= _quantity) _value = _quantity;
+        if(_quantity == 0) _quantity = 1;
+        if ((_value / 2) < _quantity) _value = 2 * _quantity;
+        if(_tokenAddress == address(0)) _tokenAddress = address(1336);
 
         // Place the order
         ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
@@ -206,8 +213,8 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         ylo.cancelOrder(0);
 
         // Place more orders
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
 
         // We should be able to cancel orders 1+2
         ylo.cancelOrder(1);
@@ -229,7 +236,7 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
 
         // Hoax the sender and tx.origin
         address new_sender_2 = address(13372);
-        startHoax(new_sender_2, new_sender_2);
+        startHoax(new_sender_2, new_sender_2, type(uint256).max);
 
         // Place the order
         ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
@@ -238,8 +245,8 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         ylo.cancelOrder(0);
 
         // Place more orders
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
 
         // We should be able to cancel orders 1+2
         ylo.cancelOrder(1);
@@ -271,10 +278,6 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         uint256 _value,
         uint128 _quantity
     ) public {
-        // Hoax the sender and tx.origin
-        address new_sender = address(1337);
-        startHoax(new_sender, new_sender);
-
         // Make sure our arguments are valid
         if(_quantity == 0) _quantity = 1;
         if (_value < _quantity) _value = _quantity;
@@ -282,23 +285,56 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         // Mint the bot some NFTs
         infiniteMint.mint(bot, 1);
 
+        // Hoax the sender and tx.origin
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender, type(uint256).max);
+
         // Expect Revert on unplaced order
-        // vm.expectRevert(abi.encodeWithSignature("InvalidAmount(address,uint256,uint256,address)", address(0), 0, 0, address(0)));
-        // ylo.fillOrder(1, 1, _value / _quantity, bot, true);
+        vm.expectRevert(abi.encodeWithSignature("InvalidAmount(address,uint256,uint256,address)", address(0), 0, 0, address(0)));
+        ylo.fillOrder(1, 1, _value / _quantity, bot, true);
 
         // Place an order
-        // ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+        ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+
+        vm.stopPrank();
+
+        // Fill order in bot context
+        startHoax(bot, bot, type(uint256).max);
 
         // Expect Revert on bad pricing
-        // vm.expectRevert(abi.encodeWithSignature("InsufficientPrice(address,uint256,uint256,address)", new_sender, 1, 1, (_value / _quantity + 1), (_value / _quantity)));
-        // ylo.fillOrder(1, 1, (_value / _quantity + 1), bot, true);
+        uint256 expectedPriceInWeiEach = (_value / _quantity) + 1;
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "InsufficientPrice(address,uint256,uint256,uint256,uint256)",
+                bot,                        // msg.sender
+                1,                          // _orderId
+                1,                          // _tokenId
+                expectedPriceInWeiEach,     // _expectedPriceInWeiEach
+                (_value / _quantity)        // order.priceInWeiEach
+            )
+        );
+        ylo.fillOrder(1, 1, expectedPriceInWeiEach, bot, true);
         
-        // Bot can fill order
-        // ylo.fillOrder(1, 1, _value / _quantity, bot, true);
+        // This should revert with NOT_AUTHORIZED since the bot hasn't approved ylo per erc721
+        vm.expectRevert("NOT_AUTHORIZED");
+        ylo.fillOrder(1, 1, _value / _quantity, bot, true);
 
-        // Burn the minted erc721 so we don't conflict inter-tests
+        // Bot has to approve the tokens to be transfered since it's a safe transfer
+        infiniteMint.approve(address(ylo), 1);
+
+        // Bot can fill order
+        ylo.fillOrder(1, 1, _value / _quantity, bot, true);
+
+        // Burn the minted erc721
         infiniteMint.burn(1);
 
+        vm.stopPrank();
+
+        // Hoax the sender and tx.origin
+        startHoax(new_sender, new_sender, type(uint256).max);
+
+        // Expect revert when trying to cancel a filled order
+        // vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 0, 0));
         // ylo.cancelOrder(0);
 
         vm.stopPrank();
