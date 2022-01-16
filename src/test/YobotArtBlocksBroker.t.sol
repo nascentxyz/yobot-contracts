@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 
-import {YobotArtBlocksBroker} from "../YobotArtBlocksBroker.sol";
+import {YobotArtBlocksBroker} from "../artblocks/YobotArtBlocksBroker.sol";
 
 // Import a mock NFT token to test bot functionality
 import {InfiniteMint} from "../mocks/InfiniteMint.sol";

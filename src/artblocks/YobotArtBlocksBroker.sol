@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.11;
 
-import {Coordinator} from "./Coordinator.sol";
-import {IArtBlocksFactory} from "./interfaces/IArtBlocksFactory.sol";
+import {Coordinator} from "../Coordinator.sol";
+import {IArtBlocksFactory} from "../interfaces/IArtBlocksFactory.sol";
 
 /// @title YobotArtBlocksBroker
 /// @author Andreas Bigger <andreas@nascent.xyz>
