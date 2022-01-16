@@ -82,28 +82,22 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     /// @param _value The amount of wei to send
     /// @param _quantity the number of erc721 tokens
     function testPlaceOrder(uint32 _value, uint128 _quantity) public {
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender);
         if(_quantity > 0 && _value >= _quantity) {
             // Uses the `prank` cheatcode to mock msg.sender in a low level call
             // https://github.com/gakonst/foundry/blob/master/evm-adapters/testdata/CheatCodes.sol
-            address new_sender = address(1337);
-            startHoax(new_sender);
             ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
-            vm.stopPrank();
         } else if (_value < _quantity) {
             // This should fail since (price/quantity) == 0
             vm.expectRevert("ZERO_WEI_BID");
-            address new_sender = address(1337);
-            startHoax(new_sender);
             ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
-            vm.stopPrank();
         } else {
             // This should fail since either the quantity is 0
             vm.expectRevert("ZERO_QUANTITY_BID");
-            address new_sender = address(1337);
-            startHoax(new_sender);
             ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
-            vm.stopPrank();
         }
+        vm.stopPrank();
     }
 
     ////////////////////////////////////////////////////
@@ -119,26 +113,37 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         address _tokenAddress,
         uint128 _quantity
     ) public {
+        // Hoax the sender and tx.origin
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender);
+
         // Revert with an out of bounds if the orderNum is greater than the user's current order count
-        vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", address(this), 1, 0));
+        vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", new_sender, 1, 0));
         ylo.cancelOrder(1);
 
+        // Make sure our arguments are valid
+        if(_quantity > 0) _quantity = 1;
+        if (_value >= _quantity) _value = _quantity;
+
         // Place the order
-        address new_sender = address(1337);
-        startHoax(new_sender);
         ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-        vm.stopPrank();
 
         // This should successfully cancel
-        // ylo.cancelOrder(0);
+        ylo.cancelOrder(0);
 
         // Expect Revert on an unplaced order
-        // vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", address(this), 0, 0));
-        // ylo.cancelOrder(0);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 0, 0));
+        ylo.cancelOrder(0);
 
-        // // Expect Revert on Duplicate Cancels
-        // vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", address(this), 0, 1));
-        // ylo.cancelOrder(0);
+        // Place the order
+        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+
+        // Stop the Hoax (prank under the hood)
+        vm.stopPrank();
+
+        // Expect Revert since our msg.sender is different
+        vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", address(this), 0, 0));
+        ylo.cancelOrder(0);
     }
 
     ////////////////////////////////////////////////////
