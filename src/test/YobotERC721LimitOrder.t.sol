@@ -2,107 +2,422 @@
 pragma solidity 0.8.11;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
+import {stdCheats, stdError} from "@std/stdlib.sol";
+import {Vm} from "@std/Vm.sol";
 
 import {YobotERC721LimitOrder} from "../YobotERC721LimitOrder.sol";
 
-contract YobotERC721LimitOrderTest is DSTestPlus {
+// Import a mock NFT token to test bot functionality
+import {InfiniteMint} from "../mocks/InfiniteMint.sol";
+
+contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     YobotERC721LimitOrder public ylo;
 
-    /// @notice testing suite precursors
-    /// @param _profitReceiver the _profitReceiver passed to the Coordinator
-    /// @param _botFeeBips the _botFeeBips passed to the Coordinator
-    function setUp(address _profitReceiver, uint256 _botFeeBips) public {
-        ylo = new YobotERC721LimitOrder(_profitReceiver, _botFeeBips);
+    /// @dev Use forge-std Vm logic
+    Vm public constant vm = Vm(HEVM_ADDRESS);
 
-        // Sanity check on the coordinator
+    /// @dev coordination logic
+    address public profitReceiver = 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B; // VB, a burn address (:
+    uint32 public botFeeBips = 5_000; // 50% 
+
+    /// @dev The bot
+    address public bot = 0x6C0439f659ABbd2C52A61fBf5bE36f5ad43d08a4; // legendary mev bot
+
+    /// @dev A Mock NFT
+    InfiniteMint public infiniteMint;
+
+    /// @notice testing suite precursors
+    function setUp() public {
+        infiniteMint = new InfiniteMint("Mock NFT", "MOCK");
+        ylo = new YobotERC721LimitOrder(profitReceiver, botFeeBips);
+        // Sanity check the coordinator
         assert(ylo.coordinator() == address(this));
     }
 
-    /*///////////////////////////////////////////////////////////////
-                        SANITY CHECKS
-    //////////////////////////////////////////////////////////////*/
+    ////////////////////////////////////////////////////
+    ///                ORDER PLACEMENT               ///
+    ////////////////////////////////////////////////////
 
-    /// @notice Test fails to place duplicate orders for the same artblocks project
-    /// @param _value value to send - _value = price per nft * _quantity
+    /// @notice Fails to place orders with zero wei value
     /// @param _tokenAddress ERC721 Token Address
     /// @param _quantity the number of erc721 tokens
-    function testFailPlaceDuplicateOrder(
-        uint256 _value,
+    function testExplicitZeroWeiOrder(
         address _tokenAddress,
         uint128 _quantity
     ) public {
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-        // this should fail with `DUPLICATE_ORDER` since order.quantity * order.priceInWeiEach
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender);
+        vm.expectRevert(abi.encodeWithSignature("InvalidAmount(address,uint256,uint256,address)", new_sender, 0, _quantity, _tokenAddress));
+        ylo.placeOrder{value: 0}(_tokenAddress, _quantity);
+        vm.stopPrank();
     }
 
-    /// @notice Test fail to send placeOrder from a contract - not an EOA
-    /// @param _value value to send - _value = price per nft * _quantity
+    /// @notice Fails to place orders with zero quantity
     /// @param _tokenAddress ERC721 Token Address
-    /// @param _quantity the number of erc721 tokens
-    function testFailPlaceOrderFromContract(
-        uint256 _value,
-        address _tokenAddress,
-        uint128 _quantity
+    function testExplicitZeroQuantityOrder(
+        address _tokenAddress
     ) public {
-        // this should fail with `NOT_EOA`
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender);
+        vm.expectRevert(stdError.divisionError);
+        ylo.placeOrder{value: 1}(_tokenAddress, 0);
+        vm.stopPrank();
     }
 
     /// @notice Test can place order
-    // function testPlaceOrder(uint256 _value, uint256 _tokenAddress, uint128 _quantity) public {
-    //     if (_tokenAddress > 0) {
-    //         ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-    //     }
-    // }
-
-    /*///////////////////////////////////////////////////////////////
-                        Order Cancelling
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Test user can't cancel unplaced order
-    /// @param _tokenAddress ERC721 Token Address
-    function testFailCancelUnplacedOrder(address _tokenAddress) public {
-        // this should fail with `ORDER_NOT_FOUND`
-        ylo.cancelOrder(_tokenAddress);
+    /// @param _value The amount of wei to send
+    /// @param _quantity the number of erc721 tokens
+    function testPlaceOrder(uint32 _value, uint128 _quantity) public {
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender);
+        if(_quantity > 0 && _value >= _quantity) {
+            // Uses the `prank` cheatcode to mock msg.sender in a low level call
+            // https://github.com/gakonst/foundry/blob/master/evm-adapters/testdata/CheatCodes.sol
+            ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+        } else if (_value < _quantity) {
+            // This should fail since (price/quantity) == 0
+            vm.expectRevert(abi.encodeWithSignature("InvalidAmount(address,uint256,uint256,address)", new_sender, 0, _quantity, address(infiniteMint)));
+            ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+        } else {
+            // This should fail since either the quantity is 0
+            vm.expectRevert(stdError.divisionError);
+            ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+        }
+        vm.stopPrank();
     }
 
-    /// @notice user can't cancel duplicate orders
+    ////////////////////////////////////////////////////
+    ///              ORDER CANCELLATION              ///
+    ////////////////////////////////////////////////////
+
+    /// @notice can cancel outstanding order
     /// @param _value value to send - _value = price per nft * _quantity
     /// @param _tokenAddress ERC721 Token Address
     /// @param _quantity the number of erc721 tokens
-    function testFailCancelDuplicateOrder(
+    function testCancelOrder(
         uint256 _value,
         address _tokenAddress,
         uint128 _quantity
     ) public {
+        // Hoax the sender and tx.origin
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender, type(uint256).max);
+
+        // Revert with an out of bounds if the orderNum is greater than the user's current order count
+        vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", new_sender, 1, 0));
+        ylo.cancelOrder(1);
+
+        // Make sure our arguments are valid
+        if(_quantity == 0) _quantity = 1;
+        if (_value < _quantity) _value = _quantity;
+        if(_tokenAddress == address(0)) _tokenAddress = address(1336);
+
+        // Place the order
         ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-        ylo.cancelOrder(_tokenAddress);
-        // this should fail with `ORDER_NOT_FOUND`
-        ylo.cancelOrder(_tokenAddress);
+
+        // This should successfully cancel
+        ylo.cancelOrder(0);
+
+        // Expect Revert on an unplaced order
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 0, 0));
+        ylo.cancelOrder(0);
+
+        // Place the order
+        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+
+        // Stop the Hoax (prank under the hood)
+        vm.stopPrank();
+
+        // Expect Revert since our msg.sender is different
+        vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", address(this), 0, 0));
+        ylo.cancelOrder(0);
+
+        // Stop the prank
+        vm.stopPrank();
     }
 
-    /// @notice can cancel outstanding order
-    // /// @param _value value to send - _value = price per nft * _quantity
-    // /// @param _tokenAddress ERC721 Token Address
-    // /// @param _quantity the number of erc721 tokens
-    // function testCancelOrder(
-    //     uint256 _value,
-    //     address _tokenAddress,
-    //     uint128 _quantity
-    // ) public {
-    //     ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-    //     require(_tokenAddress != 0, "NONEXISTANT_ORDER");
-    //     ylo.cancelOrder(_tokenAddress);
-    //     // this should fail with `ORDER_NOT_FOUND`
-    //     ylo.cancelOrder(_tokenAddress);
-    // }
+    ////////////////////////////////////////////////////
+    ///                COMPLEX ORDERS                ///
+    ////////////////////////////////////////////////////
 
-    /*///////////////////////////////////////////////////////////////
-                        WITHDRAW FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    /// @notice Tests multiple orders are placed and cancelled
+    /// @param _value value to send - _value = price per nft * _quantity
+    /// @param _tokenAddress ERC721 Token Address
+    /// @param _quantity the number of erc721 tokens
+    function testMultipleOrdersAndCancellations(
+        uint256 _value,
+        address _tokenAddress,
+        uint128 _quantity
+    ) public {
+        // Hoax the sender and tx.origin
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender, type(uint256).max);
+
+        // Make sure our arguments are valid
+        if(_quantity == 0) _quantity = 1;
+        if ((_value / 2) < _quantity) _value = 2 * _quantity;
+        if(_tokenAddress == address(0)) _tokenAddress = address(1336);
+
+        // Place the order
+        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+
+        // This should successfully cancel
+        ylo.cancelOrder(0);
+
+        // Place more orders
+        // Make sure we don't overflow uint256
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
+
+        // We should be able to cancel orders 1+2
+        ylo.cancelOrder(1);
+        ylo.cancelOrder(2);
+
+        // Expect Revert on an unplaced order
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 0, 0));
+        ylo.cancelOrder(0);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 1, 0));
+        ylo.cancelOrder(1);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 2, 0));
+        ylo.cancelOrder(2);
+        // We should still fail if the order is out of bounds
+        vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", new_sender, 3, 3));
+        ylo.cancelOrder(3);
+
+        // Stop the Hoax (prank under the hood)
+        vm.stopPrank();
+    }
+
+    /// @notice Tests multiple orders are placed and cancelled between multiple users
+    /// @param _value value to send - _value = price per nft * _quantity
+    /// @param _tokenAddress ERC721 Token Address
+    /// @param _quantity the number of erc721 tokens
+    function testMultipleUsersOrdersAndCancellations(
+        uint256 _value,
+        address _tokenAddress,
+        uint128 _quantity
+    ) public {
+        // Hoax the sender and tx.origin
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender, type(uint256).max);
+
+        // Make sure our arguments are valid
+        if(_quantity == 0) _quantity = 1;
+        if ((_value / 2) < _quantity) _value = 2 * _quantity;
+        if(_tokenAddress == address(0)) _tokenAddress = address(1336);
+
+        // Place the order
+        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+
+        // This should successfully cancel
+        ylo.cancelOrder(0);
+
+        // Place more orders
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
+
+        // We should be able to cancel orders 1+2
+        ylo.cancelOrder(1);
+        ylo.cancelOrder(2);
+
+        // Expect Revert on an unplaced order
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 0, 0));
+        ylo.cancelOrder(0);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 1, 0));
+        ylo.cancelOrder(1);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 2, 0));
+        ylo.cancelOrder(2);
+        // We should still fail if the order is out of bounds
+        vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", new_sender, 3, 3));
+        ylo.cancelOrder(3);
+
+        // Stop the Hoax (prank under the hood)
+        vm.stopPrank();
+
+        // Hoax the sender and tx.origin
+        address new_sender_2 = address(13372);
+        startHoax(new_sender_2, new_sender_2, type(uint256).max);
+
+        // Place the order
+        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+
+        // This should successfully cancel
+        ylo.cancelOrder(0);
+
+        // Place more orders
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
+        ylo.placeOrder{value: _value / 2}(_tokenAddress, _quantity);
+
+        // We should be able to cancel orders 1+2
+        ylo.cancelOrder(1);
+        ylo.cancelOrder(2);
+
+        // Expect Revert on an unplaced order
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender_2, 0, 0));
+        ylo.cancelOrder(0);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender_2, 1, 0));
+        ylo.cancelOrder(1);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender_2, 2, 0));
+        ylo.cancelOrder(2);
+        // We should still fail if the order is out of bounds
+        vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", new_sender_2, 3, 3));
+        ylo.cancelOrder(3);
+
+        // Stop the Hoax (prank under the hood)
+        vm.stopPrank();
+    }
+
+    ////////////////////////////////////////////////////
+    ///                  BOT LOGIC                   ///
+    ////////////////////////////////////////////////////
+
+    /// @notice Bot can fill an order
+    /// @param _value value to send - _value = price per nft * _quantity
+    /// @param _quantity the number of erc721 tokens
+    function testFillOrder(
+        uint256 _value,
+        uint128 _quantity
+    ) public {
+        // Make sure our arguments are valid
+        if(_quantity == 0) _quantity = 1;
+        if (_value < _quantity) _value = _quantity;
+
+        // Mint the bot some NFTs
+        infiniteMint.mint(bot, 1);
+
+        // Hoax the sender and tx.origin
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender, type(uint256).max);
+
+        // Expect Revert on unplaced order
+        vm.expectRevert(abi.encodeWithSignature("InvalidAmount(address,uint256,uint256,address)", address(0), 0, 0, address(0)));
+        ylo.fillOrder(1, 1, _value / _quantity, bot, true);
+
+        // Place an order
+        ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+
+        vm.stopPrank();
+
+        // Fill order in bot context
+        startHoax(bot, bot, type(uint256).max);
+
+        // Expect Revert on bad pricing
+        uint256 expectedPriceInWeiEach = (_value / _quantity) + 1;
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "InsufficientPrice(address,uint256,uint256,uint256,uint256)",
+                bot,                        // msg.sender
+                1,                          // _orderId
+                1,                          // _tokenId
+                expectedPriceInWeiEach,     // _expectedPriceInWeiEach
+                (_value / _quantity)        // order.priceInWeiEach
+            )
+        );
+        ylo.fillOrder(1, 1, expectedPriceInWeiEach, bot, true);
+        
+        // This should revert with NOT_AUTHORIZED since the bot hasn't approved ylo per erc721
+        vm.expectRevert("NOT_AUTHORIZED");
+        ylo.fillOrder(1, 1, _value / _quantity, bot, true);
+
+        // Bot has to approve the tokens to be transfered since it's a safe transfer
+        infiniteMint.approve(address(ylo), 1);
+
+        // Bot can fill order
+        ylo.fillOrder(1, 1, _value / _quantity, bot, true);
+
+        // Burn the minted erc721
+        infiniteMint.burn(1);
+
+        vm.stopPrank();
+
+        // Hoax the sender and tx.origin
+        startHoax(new_sender, new_sender, type(uint256).max);
+
+        // Expect revert when trying to cancel a filled order
+        // vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", new_sender, 0, 0));
+        // ylo.cancelOrder(0);
+
+        vm.stopPrank();
+    }
+
+
+    ////////////////////////////////////////////////////
+    ///                 WITHDRAWALS                  ///
+    ////////////////////////////////////////////////////
 
     // function testWithdrawal() public {
     //     ylo.withdraw();
     // }
+
+    ////////////////////////////////////////////////////
+    ///                   HELPERS                    ///
+    ////////////////////////////////////////////////////
+
+    /// @notice Views an Order
+    /// @param _user the user who places an order
+    /// @param _tokenAddress the token addres
+    function xtestViewOrder(
+        address _user,
+        address _tokenAddress
+    ) public {
+        // Expect Revert on a nonexistent order
+        bytes memory orderNonexistentEncoding = abi.encodePacked(bytes4(keccak256("OrderNonexistent(address,uint256,uint256)")));
+        vm.expectRevert(orderNonexistentEncoding);
+        YobotERC721LimitOrder.Order memory preorder = ylo.viewUserOrder(_user, 0);
+        assert(preorder.priceInWeiEach == 0);
+        assert(preorder.quantity == 0);
+
+        // Place an order
+        ylo.placeOrder{value: 10}(_tokenAddress, 10);
+        
+        // The Order should be populated
+        YobotERC721LimitOrder.Order memory placedorder = ylo.viewUserOrder(_user, 0);
+        assert(placedorder.priceInWeiEach == 1);
+        assert(placedorder.quantity == 10);
+
+        // Cancel the Order
+        ylo.cancelOrder(0);
+
+        // Expect Revert on order that was deleted (the orderId == 0)
+        vm.expectRevert(orderNonexistentEncoding);
+        YobotERC721LimitOrder.Order memory postorder = ylo.viewUserOrder(_user, 0);
+        assert(postorder.priceInWeiEach == 0);
+        assert(postorder.quantity == 0);
+    }
+
+    /// @notice Views Multiple Orders
+    /// @param _userOne The first user who places an order
+    /// @param _userTwo The second user who places an order
+    /// @param _tokenAddressOne The first token addres
+    /// @param _tokenAddressTwo The second token addres
+    function xtestViewOrders(
+        address _userOne,
+        address _userTwo,
+        address _tokenAddressOne,
+        address _tokenAddressTwo
+    ) public {
+        // Without an order, we should get an empty Order struct
+        bytes memory orderNonexistentEncoding = abi.encodePacked(bytes4(keccak256("OrderNonexistent(address,uint256,uint256)")));
+        vm.expectRevert(orderNonexistentEncoding);
+        YobotERC721LimitOrder.Order memory preorder = ylo.viewUserOrder(_userOne, 0);
+        assert(preorder.priceInWeiEach == 0);
+        assert(preorder.quantity == 0);
+
+        // Place an order from user 1
+        ylo.placeOrder{value: 10}(_tokenAddressOne, 10);
+        
+        // The Order should be populated
+        YobotERC721LimitOrder.Order memory placedorder = ylo.viewUserOrder(_userOne, 0);
+        assert(placedorder.priceInWeiEach == 1);
+        assert(placedorder.quantity == 10);
+
+        // Place An order for user 2
+        ylo.placeOrder{value: 10}(_tokenAddressOne, 10);
+
+        // Expect Revert on order that was deleted (the orderId == 0)
+        vm.expectRevert(orderNonexistentEncoding);
+        YobotERC721LimitOrder.Order memory postorder = ylo.viewUserOrder(_userOne, 0);
+        assert(postorder.priceInWeiEach == 0);
+        assert(postorder.quantity == 0);
+    }
 }

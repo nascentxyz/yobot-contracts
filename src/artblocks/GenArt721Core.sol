@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.11;
 
-import {ERC721Metadata} from "./external/ERC721Metadata.sol";
+import {ERC721Metadata} from "../external/ERC721Metadata.sol";
 
 interface Randomizer {
     function returnValue() external view returns (bytes32);
