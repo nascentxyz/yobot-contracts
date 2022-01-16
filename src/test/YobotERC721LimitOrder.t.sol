@@ -271,17 +271,37 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         uint256 _value,
         uint128 _quantity
     ) public {
+        // Hoax the sender and tx.origin
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender);
+
+        // Make sure our arguments are valid
+        if(_quantity == 0) _quantity = 1;
+        if (_value < _quantity) _value = _quantity;
+
         // Mint the bot some NFTs
         infiniteMint.mint(bot, 1);
 
+        // Expect Revert on unplaced order
+        // vm.expectRevert(abi.encodeWithSignature("InvalidAmount(address,uint256,uint256,address)", address(0), 0, 0, address(0)));
+        // ylo.fillOrder(1, 1, _value / _quantity, bot, true);
+
         // Place an order
         // ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
+
+        // Expect Revert on bad pricing
+        // vm.expectRevert(abi.encodeWithSignature("InsufficientPrice(address,uint256,uint256,address)", new_sender, 1, 1, (_value / _quantity + 1), (_value / _quantity)));
+        // ylo.fillOrder(1, 1, (_value / _quantity + 1), bot, true);
         
         // Bot can fill order
-        // ylo.fillOrder(address(this), address(infiniteMint), 1, _value, bot, true);
+        // ylo.fillOrder(1, 1, _value / _quantity, bot, true);
 
         // Burn the minted erc721 so we don't conflict inter-tests
         infiniteMint.burn(1);
+
+        // ylo.cancelOrder(0);
+
+        vm.stopPrank();
     }
 
 
