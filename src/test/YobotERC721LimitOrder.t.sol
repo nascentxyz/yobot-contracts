@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
-import {stdCheats} from "@std/stdlib.sol";
+import {stdCheats, stdError} from "@std/stdlib.sol";
 import {Vm} from "@std/Vm.sol";
 
 import {YobotERC721LimitOrder} from "../YobotERC721LimitOrder.sol";
@@ -38,45 +38,31 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     ///                ORDER PLACEMENT               ///
     ////////////////////////////////////////////////////
 
-    /// @notice Test fails to place duplicate orders for the same mint
-    /// @param _value value to send - _value = price per nft * _quantity
+    /// @notice Fails to place orders with zero wei value
     /// @param _tokenAddress ERC721 Token Address
     /// @param _quantity the number of erc721 tokens
-    function testFailPlaceDuplicateOrder(
-        uint256 _value,
+    function testExplicitZeroWeiOrder(
         address _tokenAddress,
         uint128 _quantity
     ) public {
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-        // this should fail with `DUPLICATE_ORDER` since order.quantity * order.priceInWeiEach
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-    }
-
-    /// @notice Test fail to send placeOrder from a contract - not an EOA
-    /// @param _value value to send - _value = price per nft * _quantity
-    /// @param _tokenAddress ERC721 Token Address
-    /// @param _quantity the number of erc721 tokens
-    function testFailPlaceOrderFromContract(
-        uint256 _value,
-        address _tokenAddress,
-        uint128 _quantity
-    ) public {
-        // this should fail with `NOT_EOA`
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-    }
-
-    /// @notice Test fails to place orders with zero wei value
-    /// @param _tokenAddress ERC721 Token Address
-    /// @param _quantity the number of erc721 tokens
-    function testFailZeroWeiOrder(
-        uint256 _value,
-        address _tokenAddress,
-        uint128 _quantity
-    ) public {
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender);
+        vm.expectRevert(abi.encodeWithSignature("InvalidAmount(address,uint256,uint256,address)", new_sender, 0, _quantity, _tokenAddress));
         ylo.placeOrder{value: 0}(_tokenAddress, _quantity);
+        vm.stopPrank();
     }
 
-    // TODO: orders need to be placed from an EOA, how to mock
+    /// @notice Fails to place orders with zero quantity
+    /// @param _tokenAddress ERC721 Token Address
+    function testExplicitZeroQuantityOrder(
+        address _tokenAddress
+    ) public {
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender);
+        vm.expectRevert(stdError.divisionError);
+        ylo.placeOrder{value: 1}(_tokenAddress, 0);
+        vm.stopPrank();
+    }
 
     /// @notice Test can place order
     /// @param _value The amount of wei to send
@@ -90,11 +76,11 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
             ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
         } else if (_value < _quantity) {
             // This should fail since (price/quantity) == 0
-            vm.expectRevert("ZERO_WEI_BID");
+            vm.expectRevert(abi.encodeWithSignature("InvalidAmount(address,uint256,uint256,address)", new_sender, 0, _quantity, address(infiniteMint)));
             ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
         } else {
             // This should fail since either the quantity is 0
-            vm.expectRevert("ZERO_QUANTITY_BID");
+            vm.expectRevert(stdError.divisionError);
             ylo.placeOrder{value: _value}(address(infiniteMint), _quantity);
         }
         vm.stopPrank();
@@ -145,6 +131,12 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", address(this), 0, 0));
         ylo.cancelOrder(0);
     }
+
+    ////////////////////////////////////////////////////
+    ///                COMPLEX ORDERS                ///
+    ////////////////////////////////////////////////////
+
+    
 
     ////////////////////////////////////////////////////
     ///                  BOT LOGIC                   ///

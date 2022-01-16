@@ -5,9 +5,7 @@ import {IERC721} from "./interfaces/IERC721.sol";
 import {Coordinator} from "./Coordinator.sol";
 
 /// Require EOA
-/// @param sender The msg sender
-/// @param origin The transaction origin
-error NonEOA(address sender, address origin);
+error NonEOA();
 
 /// Order Out of Bounds
 /// @param sender The address of the msg sender
@@ -115,7 +113,7 @@ contract YobotERC721LimitOrder is Coordinator {
         // Removes user foot-guns and garuantees user can receive NFTs
         // We disable linting against tx-origin to purposefully allow EOA checks
         // solhint-disable-next-line avoid-tx-origin
-        if (msg.sender != tx.origin) revert NonEOA(msg.sender, tx.origin);
+        if (msg.sender != tx.origin) revert NonEOA();
 
         // Check to make sure the bids are gt zero
         uint256 priceInWeiEach = msg.value / _quantity;
