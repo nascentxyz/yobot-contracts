@@ -110,23 +110,6 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     ///              ORDER CANCELLATION              ///
     ////////////////////////////////////////////////////
 
-    /// @notice user can't cancel duplicate orders
-    /// @param _value value to send - _value = price per nft * _quantity
-    /// @param _tokenAddress ERC721 Token Address
-    /// @param _quantity the number of erc721 tokens
-    function testFailCancelDuplicateOrder(
-        uint256 _value,
-        address _tokenAddress,
-        uint128 _quantity
-    ) public {
-        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-        ylo.cancelOrder(_tokenAddress);
-        // this should fail with `NONEXISTANT_ORDER`
-        ylo.cancelOrder(_tokenAddress);
-    }
-
-    // TODO: cancel an order, we can't place an order since eoa
-
     /// @notice can cancel outstanding order
     /// @param _value value to send - _value = price per nft * _quantity
     /// @param _tokenAddress ERC721 Token Address
@@ -136,14 +119,26 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         address _tokenAddress,
         uint128 _quantity
     ) public {
+        // Revert with an out of bounds if the orderNum is greater than the user's current order count
+        vm.expectRevert(abi.encodeWithSignature("OrderOOB(address,uint256,uint256)", address(this), 1, 0));
+        ylo.cancelOrder(1);
+
+        // Place the order
+        address new_sender = address(1337);
+        startHoax(new_sender);
+        ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
+        vm.stopPrank();
+
+        // This should successfully cancel
+        // ylo.cancelOrder(0);
+
         // Expect Revert on an unplaced order
-        bytes memory data = abi.encodePacked(bytes4(keccak256("OrderOOB(address,uint256,uint256)")));
-        vm.expectRevert(data);
-        ylo.cancelOrder(_tokenAddress);
-        // ylo.placeOrder{value: _value}(_tokenAddress, _quantity);
-        // require(_tokenAddress != 0, "NONEXISTANT_ORDER");
-        // ylo.cancelOrder(_tokenAddress);
-        // ylo.cancelOrder(_tokenAddress);
+        // vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", address(this), 0, 0));
+        // ylo.cancelOrder(0);
+
+        // // Expect Revert on Duplicate Cancels
+        // vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", address(this), 0, 1));
+        // ylo.cancelOrder(0);
     }
 
     ////////////////////////////////////////////////////
@@ -190,8 +185,10 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         address _user,
         address _tokenAddress
     ) public {
-        // Without an order, we should get an empty Order struct
-        YobotERC721LimitOrder.Order memory preorder = ylo.viewOrder(_user, _tokenAddress);
+        // Expect Revert on a nonexistent order
+        bytes memory orderNonexistentEncoding = abi.encodePacked(bytes4(keccak256("OrderNonexistent(address,uint256,uint256)")));
+        vm.expectRevert(orderNonexistentEncoding);
+        YobotERC721LimitOrder.Order memory preorder = ylo.viewUserOrder(_user, 0);
         assert(preorder.priceInWeiEach == 0);
         assert(preorder.quantity == 0);
 
@@ -199,15 +196,16 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         ylo.placeOrder{value: 10}(_tokenAddress, 10);
         
         // The Order should be populated
-        YobotERC721LimitOrder.Order memory placedorder = ylo.viewOrder(_user, _tokenAddress);
+        YobotERC721LimitOrder.Order memory placedorder = ylo.viewUserOrder(_user, 0);
         assert(placedorder.priceInWeiEach == 1);
         assert(placedorder.quantity == 10);
 
         // Cancel the Order
-        ylo.cancelOrder(_tokenAddress);
+        ylo.cancelOrder(0);
 
-        // The order should now be deleted
-        YobotERC721LimitOrder.Order memory postorder = ylo.viewOrder(_user, _tokenAddress);
+        // Expect Revert on order that was deleted (the orderId == 0)
+        vm.expectRevert(orderNonexistentEncoding);
+        YobotERC721LimitOrder.Order memory postorder = ylo.viewUserOrder(_user, 0);
         assert(postorder.priceInWeiEach == 0);
         assert(postorder.quantity == 0);
     }
@@ -224,7 +222,9 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         address _tokenAddressTwo
     ) public {
         // Without an order, we should get an empty Order struct
-        YobotERC721LimitOrder.Order memory preorder = ylo.viewOrder(_userOne, _tokenAddressOne);
+        bytes memory orderNonexistentEncoding = abi.encodePacked(bytes4(keccak256("OrderNonexistent(address,uint256,uint256)")));
+        vm.expectRevert(orderNonexistentEncoding);
+        YobotERC721LimitOrder.Order memory preorder = ylo.viewUserOrder(_userOne, 0);
         assert(preorder.priceInWeiEach == 0);
         assert(preorder.quantity == 0);
 
@@ -232,15 +232,16 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         ylo.placeOrder{value: 10}(_tokenAddressOne, 10);
         
         // The Order should be populated
-        YobotERC721LimitOrder.Order memory placedorder = ylo.viewOrder(_userOne, _tokenAddressOne);
+        YobotERC721LimitOrder.Order memory placedorder = ylo.viewUserOrder(_userOne, 0);
         assert(placedorder.priceInWeiEach == 1);
         assert(placedorder.quantity == 10);
 
         // Place An order for user 2
         ylo.placeOrder{value: 10}(_tokenAddressOne, 10);
 
-        // The order should now be deleted
-        YobotERC721LimitOrder.Order memory postorder = ylo.viewOrder(_userOne, _tokenAddressOne);
+        // Expect Revert on order that was deleted (the orderId == 0)
+        vm.expectRevert(orderNonexistentEncoding);
+        YobotERC721LimitOrder.Order memory postorder = ylo.viewUserOrder(_userOne, 0);
         assert(postorder.priceInWeiEach == 0);
         assert(postorder.quantity == 0);
     }
