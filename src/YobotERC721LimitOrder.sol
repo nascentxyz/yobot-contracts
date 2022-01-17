@@ -321,7 +321,7 @@ contract YobotERC721LimitOrder is Coordinator {
     /// @param _user The user
     function viewUserOrders(address _user) public view returns (Order[] memory output) {
         uint256 _userOrderCount = userOrderCount[_user];
-        Order[] memory output = new Order[](_userOrderCount);
+        output = new Order[](_userOrderCount);
         for (uint256 i = 0; i < _userOrderCount; i += 1) {
             uint256 _orderId = userOrders[_user][i];
             output[i] = orderStore[_orderId]; 
