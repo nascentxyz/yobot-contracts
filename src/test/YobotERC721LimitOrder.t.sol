@@ -555,44 +555,79 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         address _tokenAddressOne,
         address _tokenAddressTwo
     ) public {
-        // // Make sure our arguments are valid
-        // if(_user == address(0)) _user = address(1337);
-        // if (_tokenAddress == address(0)) _tokenAddress = address(15);
+        // Make sure our arguments are valid and unique
+        if(_userOne == address(0) || _userOne == _userTwo) _userOne = address(1337);
+        if(_userTwo == address(0) || _userOne == _userTwo) _userTwo = address(1338);
+        if (_tokenAddressOne == address(0) || _tokenAddressOne == _tokenAddressTwo) _tokenAddressOne = address(15);
+        if (_tokenAddressTwo == address(0) || _tokenAddressOne == _tokenAddressTwo) _tokenAddressOne = address(16);
     
-        // // Expect Revert on a nonexistent order
-        // vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", _user, 0, 0));
-        // YobotERC721LimitOrder.Order memory preorder = ylo.viewUserOrder(_user, 0);
-        // assert(preorder.owner == address(0));
-        // assert(preorder.tokenAddress == address(0));
-        // assert(preorder.priceInWeiEach == 0);
-        // assert(preorder.quantity == 0);
-        // assert(preorder.num == 0);
+        // Expect reverts on nonexistent orders
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", _userOne, 0, 0));
+        YobotERC721LimitOrder.Order memory preorder1 = ylo.viewUserOrder(_userOne, 0);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", _userTwo, 0, 0));
+        YobotERC721LimitOrder.Order memory preorder2 = ylo.viewUserOrder(_userTwo, 0);
 
-        // // Place the order
-        // startHoax(_user, _user, type(uint256).max);
-        // ylo.placeOrder{value: 10}(_tokenAddress, 10);
-        // vm.stopPrank();
+        // First User Places an Order
+        startHoax(_userOne, _userOne, type(uint256).max);
+        ylo.placeOrder{value: 10}(_tokenAddressOne, 10);
+        vm.stopPrank();
+
+        // Second User Places an Order
+        startHoax(_userTwo, _userTwo, type(uint256).max);
+        ylo.placeOrder{value: 40}(_tokenAddressTwo, 20);
+        vm.stopPrank();
         
-        // // The Order should be populated
-        // YobotERC721LimitOrder.Order memory placedorder = ylo.viewUserOrder(_user, 0);
-        // assert(placedorder.owner == _user);
-        // assert(placedorder.tokenAddress == _tokenAddress);
-        // assert(placedorder.priceInWeiEach == 1);
-        // assert(placedorder.quantity == 10);
-        // assert(placedorder.num == 0);
+        // Fetch Multiple Orders
+        address[] memory users = new address[](2);
+        users[0] = _userOne;
+        users[1] = _userTwo;
+        YobotERC721LimitOrder.Order[][] memory allorders = ylo.viewMultipleOrders(users);
+        assert(allorders.length == 2);
+        assert(allorders[0].length == 1);
+        assert(allorders[1].length == 1);
 
-        // // Cancel the Order
-        // startHoax(_user, _user, type(uint256).max);
-        // ylo.cancelOrder(0);
-        // vm.stopPrank();
+        // Validate the first order
+        assert(allorders[0][0].owner == _userOne);
+        assert(allorders[0][0].tokenAddress == _tokenAddressOne);
+        assert(allorders[0][0].priceInWeiEach == 1);
+        assert(allorders[0][0].quantity == 10);
+        assert(allorders[0][0].num == 0);
 
-        // // Expect Revert on order that was deleted (the orderId == 0)
-        // vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", _user, 0, 0));
-        // YobotERC721LimitOrder.Order memory postorder = ylo.viewUserOrder(_user, 0);
-        // assert(postorder.owner == address(0));
-        // assert(postorder.tokenAddress == address(0));
-        // assert(postorder.priceInWeiEach == 0);
-        // assert(postorder.quantity == 0);
-        // assert(postorder.num == 0);
+        // Validate the second order
+        assert(allorders[1][0].owner == _userTwo);
+        assert(allorders[1][0].tokenAddress == _tokenAddressTwo);
+        assert(allorders[1][0].priceInWeiEach == 2);
+        assert(allorders[1][0].quantity == 20);
+        assert(allorders[1][0].num == 0);
+
+        // Cancel the first user's order
+        startHoax(_userOne, _userOne, type(uint256).max);
+        ylo.cancelOrder(0);
+        vm.stopPrank();
+
+        // Cancel the second user's order
+        startHoax(_userTwo, _userTwo, type(uint256).max);
+        ylo.cancelOrder(0);
+        vm.stopPrank();
+
+        // Verify both orders
+        YobotERC721LimitOrder.Order[][] memory postorders = ylo.viewMultipleOrders(users);
+        assert(postorders.length == 2);
+        assert(postorders[0].length == 1);
+        assert(postorders[1].length == 1);
+
+        // Check the first order is empty
+        assert(postorders[0][0].owner == address(0));
+        assert(postorders[0][0].tokenAddress == address(0));
+        assert(postorders[0][0].priceInWeiEach == 0);
+        assert(postorders[0][0].quantity == 0);
+        assert(postorders[0][0].num == 0);
+
+        // Check the second order is empty
+        assert(postorders[1][0].owner == address(0));
+        assert(postorders[1][0].tokenAddress == address(0));
+        assert(postorders[1][0].priceInWeiEach == 0);
+        assert(postorders[1][0].quantity == 0);
+        assert(postorders[1][0].num == 0);
     }
 }
