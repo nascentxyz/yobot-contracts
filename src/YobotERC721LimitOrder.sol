@@ -64,7 +64,7 @@ contract YobotERC721LimitOrder is Coordinator {
     uint256 public orderId = 1;
 
     /// @dev Mapping from order id to an Order
-    mapping(uint256 => Order) orderStore;
+    mapping(uint256 => Order) public orderStore;
 
     /// @dev user => order number => order id
     mapping(address => mapping(uint256 => uint256)) public userOrders;
@@ -214,7 +214,7 @@ contract YobotERC721LimitOrder is Coordinator {
         }
 
         // Emit the action later so we can log trace on a bot dashboard
-        emit Action(order.owner, order.tokenAddress, order.priceInWeiEach, order.quantity - 1, "ORDER_FILLED", _orderId, order.num, _tokenId);
+        emit Action(order.owner, order.tokenAddress, order.priceInWeiEach, order.quantity, "ORDER_FILLED", _orderId, order.num, _tokenId);
 
         // Clear up if the quantity is now 0
         if (order.quantity == 0) {

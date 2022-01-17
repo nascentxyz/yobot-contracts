@@ -17,7 +17,8 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     Vm public constant vm = Vm(HEVM_ADDRESS);
 
     /// @dev coordination logic
-    address public profitReceiver = 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B; // VB, a burn address (:
+    // use VB, a burn address (:, as the profit receiver
+    address public profitReceiver = 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B;
     uint32 public botFeeBips = 5_000; // 50% 
 
     /// @dev The bot
@@ -345,9 +346,72 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     ///                 WITHDRAWALS                  ///
     ////////////////////////////////////////////////////
 
-    // function testWithdrawal() public {
-    //     ylo.withdraw();
-    // }
+    function testWithdrawal() public {
+        // Place and order
+        address new_sender = address(1337);
+        startHoax(new_sender, new_sender, type(uint256).max);
+        ylo.placeOrder{value: 4}(address(infiniteMint), 1);
+
+        // Make sure we incremented the order id
+        assert(ylo.orderId() == 2);
+
+        // Make sure our order is stored correctly
+        (address o_o, address o_ta, uint256 o_p, uint256 o_q, uint256 o_n) = ylo.orderStore(1);
+        assert(o_o == new_sender);
+        assert(o_ta == address(infiniteMint));
+        assert(o_p == 4);
+        assert(o_q == 1);
+        assert(o_n == 0);
+
+        // Check our userOrder is correct
+        (uint256 oi) = ylo.userOrders(new_sender, 0);
+        assert(oi == 1);
+
+        // Check the userOrderCount increased to 1
+        (uint256 uoc) = ylo.userOrderCount(new_sender);
+        assert(uoc == 1);
+        vm.stopPrank();
+
+        // Fill order in bot context
+        startHoax(bot, bot, type(uint256).max / 2);
+
+        // Mint the bot some NFTs
+        infiniteMint.mint(bot, 1);
+        assert(infiniteMint.ownerOf(1) == bot);
+
+        // Approve the YobotERC721LimitOrder contract to transfer
+        infiniteMint.approve(address(ylo), 1);
+        assert(infiniteMint.getApproved(1) == address(ylo));
+        ylo.fillOrder(1, 1, 4, bot, false); // don't send the payment now to test the balances
+        
+        // Check the bot and profit receiver balances
+        (uint256 botBalance) = ylo.balances(bot);
+        assert(botBalance == 2);
+        (uint256 prBalance) = ylo.balances(profitReceiver);
+        assert(prBalance == 2);
+        vm.stopPrank();
+
+        // Withdraw from the context of the profitReceiver
+        startHoax(profitReceiver, profitReceiver, 100);
+        assertEq(profitReceiver.balance, 100);
+        ylo.withdraw();
+        // Expect the profitReceiver to have a balance of ((botFeeBips * value) / 10_000)
+        assertEq(profitReceiver.balance, 102);
+        vm.stopPrank();
+
+        // Withdraw the bot's profits later
+        startHoax(bot, bot, 100);
+        assertEq(bot.balance, 100);
+        ylo.withdraw();
+        // Expect the bot to have a balance of ((botFeeBips * value) / 10_000)
+        assertEq(bot.balance, 102);
+        vm.stopPrank();
+
+        // Burn the minted erc721
+        startHoax(new_sender, new_sender, type(uint256).max);
+        infiniteMint.burn(1);
+        vm.stopPrank();
+    }
 
     ////////////////////////////////////////////////////
     ///                   HELPERS                    ///
