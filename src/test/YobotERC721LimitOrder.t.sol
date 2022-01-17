@@ -417,36 +417,52 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
     ///                   HELPERS                    ///
     ////////////////////////////////////////////////////
 
-    /// @notice Views an Order
+    /// @notice Views a user's order
     /// @param _user the user who places an order
     /// @param _tokenAddress the token addres
-    function xtestViewOrder(
+    function testViewUserOrder(
         address _user,
         address _tokenAddress
     ) public {
+        // Make sure our arguments are valid
+        if(_user == address(0)) _user = address(1337);
+        if (_tokenAddress == address(0)) _tokenAddress = address(15);
+    
         // Expect Revert on a nonexistent order
-        bytes memory orderNonexistentEncoding = abi.encodePacked(bytes4(keccak256("OrderNonexistent(address,uint256,uint256)")));
-        vm.expectRevert(orderNonexistentEncoding);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", _user, 0, 0));
         YobotERC721LimitOrder.Order memory preorder = ylo.viewUserOrder(_user, 0);
+        assert(preorder.owner == address(0));
+        assert(preorder.tokenAddress == address(0));
         assert(preorder.priceInWeiEach == 0);
         assert(preorder.quantity == 0);
+        assert(preorder.num == 0);
 
-        // Place an order
+        // Place the order
+        startHoax(_user, _user, type(uint256).max);
         ylo.placeOrder{value: 10}(_tokenAddress, 10);
+        vm.stopPrank();
         
         // The Order should be populated
         YobotERC721LimitOrder.Order memory placedorder = ylo.viewUserOrder(_user, 0);
+        assert(placedorder.owner == _user);
+        assert(placedorder.tokenAddress == _tokenAddress);
         assert(placedorder.priceInWeiEach == 1);
         assert(placedorder.quantity == 10);
+        assert(placedorder.num == 0);
 
         // Cancel the Order
+        startHoax(_user, _user, type(uint256).max);
         ylo.cancelOrder(0);
+        vm.stopPrank();
 
         // Expect Revert on order that was deleted (the orderId == 0)
-        vm.expectRevert(orderNonexistentEncoding);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", _user, 0, 0));
         YobotERC721LimitOrder.Order memory postorder = ylo.viewUserOrder(_user, 0);
+        assert(postorder.owner == address(0));
+        assert(postorder.tokenAddress == address(0));
         assert(postorder.priceInWeiEach == 0);
         assert(postorder.quantity == 0);
+        assert(postorder.num == 0);
     }
 
     /// @notice Views Multiple Orders
@@ -460,28 +476,44 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         address _tokenAddressOne,
         address _tokenAddressTwo
     ) public {
-        // Without an order, we should get an empty Order struct
-        bytes memory orderNonexistentEncoding = abi.encodePacked(bytes4(keccak256("OrderNonexistent(address,uint256,uint256)")));
-        vm.expectRevert(orderNonexistentEncoding);
-        YobotERC721LimitOrder.Order memory preorder = ylo.viewUserOrder(_userOne, 0);
+        // Make sure our arguments are valid
+        if(_user == address(0)) _user = address(1337);
+        if (_tokenAddress == address(0)) _tokenAddress = address(15);
+    
+        // Expect Revert on a nonexistent order
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", _user, 0, 0));
+        YobotERC721LimitOrder.Order memory preorder = ylo.viewUserOrder(_user, 0);
+        assert(preorder.owner == address(0));
+        assert(preorder.tokenAddress == address(0));
         assert(preorder.priceInWeiEach == 0);
         assert(preorder.quantity == 0);
+        assert(preorder.num == 0);
 
-        // Place an order from user 1
-        ylo.placeOrder{value: 10}(_tokenAddressOne, 10);
+        // Place the order
+        startHoax(_user, _user, type(uint256).max);
+        ylo.placeOrder{value: 10}(_tokenAddress, 10);
+        vm.stopPrank();
         
         // The Order should be populated
-        YobotERC721LimitOrder.Order memory placedorder = ylo.viewUserOrder(_userOne, 0);
+        YobotERC721LimitOrder.Order memory placedorder = ylo.viewUserOrder(_user, 0);
+        assert(placedorder.owner == _user);
+        assert(placedorder.tokenAddress == _tokenAddress);
         assert(placedorder.priceInWeiEach == 1);
         assert(placedorder.quantity == 10);
+        assert(placedorder.num == 0);
 
-        // Place An order for user 2
-        ylo.placeOrder{value: 10}(_tokenAddressOne, 10);
+        // Cancel the Order
+        startHoax(_user, _user, type(uint256).max);
+        ylo.cancelOrder(0);
+        vm.stopPrank();
 
         // Expect Revert on order that was deleted (the orderId == 0)
-        vm.expectRevert(orderNonexistentEncoding);
-        YobotERC721LimitOrder.Order memory postorder = ylo.viewUserOrder(_userOne, 0);
+        vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", _user, 0, 0));
+        YobotERC721LimitOrder.Order memory postorder = ylo.viewUserOrder(_user, 0);
+        assert(postorder.owner == address(0));
+        assert(postorder.tokenAddress == address(0));
         assert(postorder.priceInWeiEach == 0);
         assert(postorder.quantity == 0);
+        assert(postorder.num == 0);
     }
 }
