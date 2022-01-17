@@ -559,7 +559,7 @@ contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
         if(_userOne == address(0) || _userOne == _userTwo) _userOne = address(1337);
         if(_userTwo == address(0) || _userOne == _userTwo) _userTwo = address(1338);
         if (_tokenAddressOne == address(0) || _tokenAddressOne == _tokenAddressTwo) _tokenAddressOne = address(15);
-        if (_tokenAddressTwo == address(0) || _tokenAddressOne == _tokenAddressTwo) _tokenAddressOne = address(16);
+        if (_tokenAddressTwo == address(0) || _tokenAddressOne == _tokenAddressTwo) _tokenAddressTwo = address(16);
     
         // Expect reverts on nonexistent orders
         vm.expectRevert(abi.encodeWithSignature("OrderNonexistent(address,uint256,uint256)", _userOne, 0, 0));
