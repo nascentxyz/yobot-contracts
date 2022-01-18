@@ -36,7 +36,7 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
     /// @notice Test can't place order when Artblocks Project Id is 0
     /// @param _value value to send - _value = price per nft * _quantity
     /// @param _quantity the number of erc721 tokens
-    function testFailPlaceZeroProjectIdOrder(uint256 _value, uint128 _quantity)
+    function xtestFailPlaceZeroProjectIdOrder(uint256 _value, uint128 _quantity)
         public
     {
         // this should fail
@@ -47,7 +47,7 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
     /// @param _value value to send - _value = price per nft * _quantity
     /// @param _artBlocksProjectId the ArtBlocks Project Id
     /// @param _quantity the number of erc721 tokens
-    function testFailPlaceDuplicateOrder(
+    function xtestFailPlaceDuplicateOrder(
         uint256 _value,
         uint256 _artBlocksProjectId,
         uint128 _quantity
@@ -62,7 +62,7 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
     /// @param _value value to send - _value = price per nft * _quantity
     /// @param _artBlocksProjectId the ArtBlocks Project Id
     /// @param _quantity the number of erc721 tokens
-    function testFailPlaceOrderFromContract(
+    function xtestFailPlaceOrderFromContract(
         uint256 _value,
         uint256 _artBlocksProjectId,
         uint128 _quantity
@@ -84,14 +84,14 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
 
     /// @notice Test user can't cancel unplaced order
     /// @param _artBlocksProjectId Artblocks Project Id
-    function testFailCancelUnplacedOrder(uint256 _artBlocksProjectId) public {
+    function xtestFailCancelUnplacedOrder(uint256 _artBlocksProjectId) public {
         require(_artBlocksProjectId != 0, "INVALID_ARTBLOCKS_ID");
         // this should fail with `ORDER_NOT_FOUND`
         yabb.cancelOrder(_artBlocksProjectId);
     }
 
     /// @notice Test user can't cancel an order with Artblocks Project Id = 0
-    function testFailCancelZeroProjectIdOrder() public {
+    function xtestFailCancelZeroProjectIdOrder() public {
         yabb.cancelOrder(0);
     }
 
@@ -99,7 +99,7 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
     /// @param _value value to send - _value = price per nft * _quantity
     /// @param _artBlocksProjectId the ArtBlocks Project Id
     /// @param _quantity the number of erc721 tokens
-    function testFailCancelDuplicateOrder(
+    function xtestFailCancelDuplicateOrder(
         uint256 _value,
         uint256 _artBlocksProjectId,
         uint128 _quantity
@@ -136,7 +136,7 @@ contract YobotArtBlocksBrokerTest is DSTestPlus {
     /// @notice Bot can fill an order
     /// @param _value value to send - _value = price per nft * _quantity
     /// @param _quantity the number of erc721 tokens
-    function testFillOrder(
+    function xtestFillOrder(
         uint256 _value,
         uint128 _quantity
     ) public {
