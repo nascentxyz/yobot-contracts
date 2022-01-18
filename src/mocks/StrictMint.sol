@@ -86,9 +86,9 @@ contract StrictMint is ERC721 {
 
     /// @dev Sets the ERC721 Metadata and OpenSea Proxy Registry Address
     constructor(
-        address osProxyRegistryAddress
+        // address osProxyRegistryAddress
     ) ERC721("Strict Mint", "STRICT") {
-        openSeaProxyRegistryAddress = osProxyRegistryAddress;
+        // openSeaProxyRegistryAddress = osProxyRegistryAddress;
         owner = msg.sender;
     }
 

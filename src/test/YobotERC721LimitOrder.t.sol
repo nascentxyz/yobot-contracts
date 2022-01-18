@@ -2,8 +2,8 @@
 pragma solidity 0.8.11;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
-import {stdCheats, stdError} from "@std/stdlib.sol";
-import {Vm} from "@std/Vm.sol";
+import {stdCheats, stdError} from "forge-std/stdlib.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 import {YobotERC721LimitOrder} from "../YobotERC721LimitOrder.sol";
 
