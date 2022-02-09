@@ -70,6 +70,57 @@ Verify StrictMint contract with:
 ETH_FROM=<ETH_FROM> ETH_RPC_URL=https://eth-goerli.alchemyapi.io/v2/<your_api_key> ETHERSCAN_API_KEY=<api_key> ETH_GAS=15000000 dapp verify-contract src/mocks/StrictMint.sol:StrictMint 0xed198777a685a7152ecf165b4a4dee010fe6f933
 ```
 
+
+
+#### CheapMint
+
+**Build** the project to compile the latest contract:
+```sh
+forge build
+```
+
+Deploy [CheapMint](./src/mocks/CheapMint.sol) with:
+```sh
+forge create --rpc-url https://eth-goerli.alchemyapi.io/v2/<your_api_key> --chain 'goerli' --interactive src/mocks/CheapMint.sol:CheapMint
+```
+
+CheapMint deployed on Goerli at [0xb270ab9abe2863f81c72812b76f443a139ad6a0a](https://goerli.etherscan.io/address/0xb270ab9abe2863f81c72812b76f443a139ad6a0a).
+
+The `--interactive` flag allows you to enter your deployer wallet private key in the terminal without exposing it in plain text.
+
+Verify the contract with dapptools.
+
+Verify CheapMint contract with:
+```bash
+ETH_FROM=<ETH_FROM> ETH_RPC_URL=https://eth-goerli.alchemyapi.io/v2/<your_api_key> ETHERSCAN_API_KEY=<api_key> ETH_GAS=15000000 dapp verify-contract src/mocks/CheapMint.sol:CheapMint 0xb270ab9abe2863f81c72812b76f443a139ad6a0a
+```
+
+
+#### FreeMint
+
+**Build** the project to compile the latest contract:
+```sh
+forge build
+```
+
+Deploy [FreeMint](./src/mocks/FreeMint.sol) with:
+```sh
+forge create --rpc-url https://eth-goerli.alchemyapi.io/v2/<your_api_key> --chain 'goerli' --interactive src/mocks/FreeMint.sol:FreeMint
+```
+
+FreeMint deployed on Goerli at [0x6557f41a83ed9a16ab4ba4f2d394131cc3b41a0d](https://goerli.etherscan.io/address/0x6557f41a83ed9a16ab4ba4f2d394131cc3b41a0d).
+
+The `--interactive` flag allows you to enter your deployer wallet private key in the terminal without exposing it in plain text.
+
+Verify the contract with dapptools.
+
+Verify FreeMint contract with:
+```bash
+ETH_FROM=<ETH_FROM> ETH_RPC_URL=https://eth-goerli.alchemyapi.io/v2/<your_api_key> ETHERSCAN_API_KEY=<api_key> ETH_GAS=15000000 dapp verify-contract src/mocks/FreeMint.sol:FreeMint 0x6557f41a83ed9a16ab4ba4f2d394131cc3b41a0d
+```
+
+
+
 #### YobotERC721LimitOrder
 
 
