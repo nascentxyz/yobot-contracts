@@ -7,7 +7,9 @@
 
 Goerli YobotERC721LimitOrder: [0x20340e29ba445553f6a5c1b8d30f405b3447664d](https://goerli.etherscan.io/address/0x20340e29ba445553f6a5c1b8d30f405b3447664d).
 
-Mainnet YobotERC721LimitOrder: [???](https://etherscan.io/address/).
+Mainnet YobotERC721LimitOrder: [0x715da5e53526bedac9bd96e8fdb7efb185d1b6ca](https://etherscan.io/address/0x715da5e53526bedac9bd96e8fdb7efb185d1b6ca). Deployed and managed by [0xc9ab63915c6738c8ce5ca245979203bfa3f2499f](https://etherscan.io/address/0xc9ab63915c6738c8ce5ca245979203bfa3f2499f) - an account managed by the yobot team.
+
+NOTE: The deployer has no ability to withdraw funds - it may only collect the yobot fees as defined in [YobotERC721LimitOrder.sol](./src/YobotERC721LimitOrder.sol). The deployer address is set as the YobotERC721LimitOrder's [Coordinator](./src/Coordinator.sol).
 
 ## Blueprint
 
