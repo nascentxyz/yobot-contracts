@@ -2,26 +2,21 @@
 pragma solidity 0.8.11;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
-import {stdCheats, stdError} from "forge-std/stdlib.sol";
-import {Vm} from "forge-std/Vm.sol";
-
+import {stdError} from "forge-std/stdlib.sol";
 import {YobotERC721LimitOrder} from "../YobotERC721LimitOrder.sol";
 
 // Import a mock NFT token to test bot functionality
 import {InfiniteMint} from "../mocks/InfiniteMint.sol";
 
-contract YobotERC721LimitOrderTest is DSTestPlus, stdCheats {
+contract YobotERC721LimitOrderTest is DSTestPlus {
     YobotERC721LimitOrder public ylo;
-
-    /// @dev Use forge-std Vm logic
-    Vm public constant vm = Vm(HEVM_ADDRESS);
 
     /// @dev coordination logic
     // use VB, a burn address (:, as the profit receiver
     address public profitReceiver = 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B;
     uint32 public botFeeBips = 5_000; // 50% 
 
-    /// @dev The bot
+    /// @dev The botf
     address public bot = 0x6C0439f659ABbd2C52A61fBf5bE36f5ad43d08a4; // legendary mev bot
 
     /// @dev A Mock NFT
